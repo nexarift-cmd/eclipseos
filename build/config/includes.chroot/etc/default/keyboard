@@ -1,0 +1,9 @@
+# EclipseOS live-session keyboard defaults (Phase 1).
+#
+# The Phase 3 installer lets the user choose layout and variant; the live
+# preview uses the Debian default US layout so that the image is deterministic.
+XKBMODEL="pc105"
+XKBLAYOUT="us"
+XKBVARIANT=""
+XKBOPTIONS=""
+BACKSPACE="guess"

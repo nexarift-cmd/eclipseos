@@ -1,0 +1,11 @@
+EclipseOS 26.10 live image
+
+This is the Phase 1 preview: a Debian 13 base, X11, openbox and the
+EclipseOS branding. The full Plasma desktop arrives in Phase 2.
+
+The live user "eclipse" has no password and passwordless sudo by design,
+because a live session cannot store credentials. Do not treat this image as
+a secure multi-user system. Systems installed by the Phase 3 installer will
+require a real password for the installed user.
+
+No telemetry or background data collection is enabled.

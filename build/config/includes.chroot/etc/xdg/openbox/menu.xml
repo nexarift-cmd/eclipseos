@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EclipseOS openbox root menu (Phase 1 preview).
+  Original configuration, GPL-3.0-or-later.
+-->
+<openbox_menu xmlns="http://openbox.org/3.4/menu">
+  <menu id="root-menu" label="EclipseOS">
+    <item label="Terminal">
+      <action name="Execute">
+        <command>xterm</command>
+      </action>
+    </item>
+    <item label="System monitor">
+      <action name="Execute">
+        <command>xterm -e top</command>
+      </action>
+    </item>
+    <separator/>
+    <item label="Reconfigure openbox">
+      <action name="Reconfigure"/>
+    </item>
+    <separator/>
+    <item label="Exit session">
+      <action name="Exit"/>
+    </item>
+  </menu>
+</openbox_menu>

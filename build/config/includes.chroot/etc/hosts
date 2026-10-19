@@ -1,0 +1,14 @@
+# EclipseOS live hosts file.
+#
+# This file is baked at build time. live-build deletes and re-creates
+# /etc/hosts around the build, so it must live in includes.chroot to survive
+# into the squashfs. The live session runs without live-config, therefore this
+# is the final file the user sees; NetworkManager does not modify it.
+
+127.0.0.1	localhost
+127.0.1.1	eclipseos
+
+# The following lines are desirable for IPv6 capable hosts
+::1		localhost ip6-localhost ip6-loopback
+ff02::1		ip6-allnodes
+ff02::2		ip6-allrouters

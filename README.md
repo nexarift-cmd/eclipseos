@@ -13,10 +13,13 @@ update experience. The upstream components are credited in
 
 ## Project status
 
-> **Built and tested:** nothing yet. Phase 0 (planning and scaffolding) is
-> complete. No ISO has been produced in the current sandbox because it is a
-> Windows host with no Linux build environment, no VirtualBox/QEMU, 5 GB of
-> RAM and 17.8 GB of free disk. See
+> **Built and tested:** no ISO has been built or booted yet. Phase 0
+> (planning and scaffolding) is complete. Phase 1 (minimal branded live ISO)
+> is implemented and passes local static checks, but it cannot be accepted
+> until a Debian 13 build host or the GitHub Actions workflow produces an ISO
+> and the QEMU/VirtualBox boot tests pass. The current sandbox is a Windows
+> host with no Linux build environment, no VirtualBox/QEMU, 5 GB of RAM and
+> 17.8 GB of free disk. See
 > [`docs/build-environment.md`](docs/build-environment.md). Do not treat any
 > phase as "working" until its acceptance tests have run on a suitable build
 > host.
@@ -24,7 +27,7 @@ update experience. The upstream components are credited in
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
-| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Blocked on build host |
+| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Implemented; build and boot verification pending |
 | 2 | Plasma desktop, taskbar, Start menu, themes | Not started |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
@@ -56,6 +59,11 @@ Calamares or Debian are our work.
 | Networking, audio, Bluetooth, printing, power | NetworkManager, PipeWire, BlueZ, CUPS, power-profiles-daemon | Reused upstream |
 | Branding | EclipseOS | Original SVG logo, wallpapers, icons and themes; no Microsoft assets |
 
+The Phase 1 live image is intentionally smaller than the target product:
+LightDM + openbox + xterm/feh prove the boot and graphical path. Phase 2
+replaces that session with Plasma and SDDM. The table above describes the
+target product, not the Phase 1 contents.
+
 ## Architecture and planning
 
 - [`docs/architecture.md`](docs/architecture.md) — system design, boot flow,
@@ -66,6 +74,8 @@ Calamares or Debian are our work.
   requirements and commands.
 - [`docs/licenses.md`](docs/licenses.md) — component licensing and the
   non-free firmware / Guest Additions decisions.
+- [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) — what
+  works without Oracle Guest Additions, and what does not.
 - [`docs/real-hardware-guide.md`](docs/real-hardware-guide.md) — USB
   preparation, UEFI/BIOS setup, Secure Boot, dual-boot warnings and backup
   checklist.
@@ -110,7 +120,7 @@ On Debian 13:
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   ca-certificates curl git make sudo \
-  live-build debootstrap xorriso squashfs-tools mtools dosfstools \
+  live-build debootstrap xorriso squashfs-tools mtools dosfstools cpio \
   grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
   isolinux syslinux-common \
   qemu-system-x86 qemu-utils ovmf python3
@@ -127,9 +137,23 @@ git clone <repository-url> eclipseos
 cd eclipseos
 
 make doctor          # verify OS, tools, disk, CPU and memory
+make static-check    # shell lint, Python/JSON syntax, desktop entry
 make iso             # build eclipseos-26.10-amd64.iso + .sha256 + .buildinfo
 make test            # headless QEMU boot checks (UEFI + BIOS)
 make test-vm         # create and start a 4 GB / 2 vCPU / EFI VirtualBox VM
+```
+
+A strict open-source build omits all `non-free-firmware` packages:
+
+```bash
+make iso STRICT_FOSS=1
+make iso-strict      # equivalent
+```
+
+Branding assets are generated at build time. To render them alone:
+
+```bash
+make assets          # writes branding/assets/*.png and the logo SVG
 ```
 
 The resulting artefact is expected at the repository root:
@@ -140,17 +164,34 @@ eclipseos-26.10-amd64.iso.sha256
 eclipseos-26.10-amd64.iso.buildinfo
 ```
 
-The live session user will be `eclipse` with no password. Root login is not
-enabled. The installer requires a real password for the installed account.
+The live session user is `eclipse` with no password. Root login is not
+enabled. The installer (Phase 3) requires a real password for the installed
+account.
+
+### Continuous integration
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) builds the ISO in
+a privileged Debian 13 container on `ubuntu-24.04`, runs the static checks,
+boots the image in QEMU with OVMF (UEFI) and SeaBIOS, and uploads the ISO,
+checksum, build info, serial logs and screenshots as artifacts. A manual
+`workflow_dispatch` run can build both the default and `STRICT_FOSS=1`
+flavours. The workflow has not run yet; it needs a pushed GitHub repository.
+
+VirtualBox is a manual acceptance environment, not a CI virtualiser. Read
+[`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
+expecting clipboard, shared folders or automatic display resizing.
 
 ## Security and privacy
 
-- No telemetry, analytics, advertising or hard-coded credentials.
+- No telemetry, analytics or advertising.
+- No installed-system credentials are baked into the ISO. The live account
+  `eclipse` is intentionally passwordless and has passwordless `sudo` only
+  inside the live session; the Phase 3 installer must create a real installed
+  account password and must not copy the live sudoers drop-in.
 - No remote shell or default network services on the live image.
-- The live user has passwordless `sudo` only inside the live session; this
-  policy is removed from the installed system.
-- Firewall, unattended security updates and SSD TRIM are enabled by default
-  on the installed system.
+- Firewall, unattended security updates and SSD TRIM are planned defaults for
+  the installed system (Phases 3–4); they are not present in the Phase 1 live
+  image.
 - Secure Boot is a Phase 6 release gate. Until signed images are verified,
   the live ISO should be tested with Secure Boot disabled.
 

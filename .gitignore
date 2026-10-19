@@ -20,9 +20,23 @@ build/config/binary
 build/config/chroot
 build/config/common
 build/config/source
-build/config/hooks/*.chroot
+build/config/hooks/normal/*.hook.chroot
+build/config/hooks/live/*.hook.chroot
 build/config/includes.chroot/usr/lib/eclipseos/version
 build/config/packages.chroot/
+
+# Generated build inputs (scripts/build.sh / make assets)
+branding/assets/
+build/config/package-lists/eclipse-firmware.list.chroot
+build/config/includes.chroot/usr/share/doc/eclipseos/
+build/config/includes.chroot/usr/share/backgrounds/eclipseos/
+build/config/includes.chroot/usr/share/pixmaps/eclipseos/
+build/config/includes.chroot/usr/share/plymouth/themes/eclipseos/logo.png
+build/config/includes.chroot/usr/share/plymouth/themes/eclipseos/splash.png
+build/config/includes.chroot/usr/share/plymouth/themes/eclipseos/eclipseos-progress-track.png
+build/config/includes.chroot/usr/share/plymouth/themes/eclipseos/eclipseos-progress-fill.png
+build/config/bootloaders/grub-pc/splash.png
+build/config/bootloaders/grub-pc/unicode.pf2
 
 # QEMU / VirtualBox / test output
 tests/out/

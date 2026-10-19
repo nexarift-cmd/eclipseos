@@ -1,8 +1,9 @@
 # EclipseOS architecture
 
-Status: **Phase 0 design baseline.** This document describes what will be
-built. It is not evidence that the system already works. The current sandbox
-cannot produce or boot a Linux ISO; see
+Status: **Phase 1 implementation.** This document describes the target
+product and its Phase 1 subset. Phase 1 uses LightDM + openbox + xterm/feh
+instead of Plasma + SDDM; Phase 2 replaces the session. No ISO has been built
+or booted yet, and this document is not evidence that the system works. See
 [build-environment.md](build-environment.md).
 
 ## 1. Scope and honest boundaries
@@ -92,11 +93,13 @@ check. They will be pinned to a Debian snapshot before the release build.
    ISO or USB device.
 4. Plymouth displays the original EclipseOS boot splash while the root
    overlay is assembled.
-5. systemd reaches the graphical target; SDDM presents the EclipseOS greeter.
-6. The live session logs in automatically as `eclipse` (no password) so the
-   desktop is immediately usable. No installed-system credential exists yet.
-7. An "Install EclipseOS" launcher starts Calamares through a PolicyKit
-   wrapper.
+5. systemd reaches the graphical target. Phase 1 starts LightDM, which logs
+   the live user in automatically and launches the EclipseOS X11/openbox
+   session. Phase 2 replaces this with SDDM and Plasma.
+6. The live session runs as `eclipse` (no password) so the desktop is
+   immediately usable. No installed-system credential exists yet.
+7. Phase 3 adds an "Install EclipseOS" launcher that starts Calamares through
+   a PolicyKit wrapper.
 
 ### Boot path: installed system
 
@@ -112,13 +115,15 @@ check. They will be pinned to a Debian snapshot before the release build.
 `make iso` runs `scripts/build.sh`, which:
 
 1. validates the host and architecture;
-2. records `SOURCE_DATE_EPOCH`, commit, tool versions and package manifest;
-3. runs `lb build` in `build/` using the checked-in configuration;
-4. injects the EclipseOS product packages and branding through the chroot
-   hook and includes;
-5. renames the hybrid image to `eclipseos-26.10-amd64.iso`;
-6. writes a SHA256 file and build-info manifest;
-7. optionally runs `scripts/test-qemu.sh` in CI for UEFI and BIOS.
+2. records `SOURCE_DATE_EPOCH`, commit and licence mode;
+3. renders the brand artwork and stages the wallpaper, Plymouth/GRUB
+   splashes, GRUB font, firmware list and licence documents into the
+   live-build tree;
+4. cleans previous live-build state;
+5. runs `lb config` explicitly, then `lb build` in `build/`;
+6. renames the hybrid image to `eclipseos-26.10-amd64.iso`;
+7. writes a SHA256 file and build-info manifest;
+8. leaves UEFI and BIOS boot testing to `make test-all` (local or CI).
 
 The live-build tree has these responsibilities:
 
@@ -324,22 +329,24 @@ live sudoers drop-in is excluded from the target.
 
 ## 10. VirtualBox and VM support
 
-The ISO targets VirtualBox as the first test platform. Planned support:
+The ISO targets VirtualBox as the first manual test platform. Phase 1 sets:
 
-- VMSVGA graphics and 128 MB VRAM;
-- X11 fallback session when Wayland fails;
-- seamless clipboard/shared folders **only if** a legally redistributable
-  Guest Additions implementation is shipped;
-- UEFI and BIOS VirtualBox machines.
+- VMSVGA graphics and 128 MB VRAM in `scripts/create-vbox-vm.sh`;
+- EFI by default, BIOS with `--no-efi`;
+- 4 GB RAM, 2 vCPU, 25 GiB disk, ISO attached;
+- X11 session with software-rendering fallback.
 
-**Open issue:** Debian 13 does not currently ship the VirtualBox Guest
-Utilities in its stable archive. The Oracle Guest Additions ISO is in Debian
-`non-free` and is not an open-source component. Bundling it would conflict
-with the project's open-source-only rule. Phase 1 will evaluate a backport of
-Debian's `contrib` guest utilities after a license audit. Until then, the
-defaults are VMSVGA (display) and a documented post-install Guest Additions
-path; the "pre-installed Guest Additions" requirement is **not yet satisfied**
-and will not be claimed otherwise.
+EclipseOS does **not** ship Oracle Guest Additions or the Extension Pack. The
+open-source `vmwgfx`/Mesa stack provides basic display support, but automatic
+resize, seamless mouse integration, shared clipboard and shared folders are
+unavailable. Debian 13 stable does not provide `virtualbox-guest-utils`; the
+requirement is unmet. See
+[`virtualbox-limitations.md`](virtualbox-limitations.md) for the full matrix
+and workarounds.
+
+The VirtualBox acceptance boot has not been recorded. QEMU tests are the CI
+gate; they use `-vga std`, so they cannot prove VirtualBox-specific
+behaviour.
 
 ## 11. Build and test architecture
 
@@ -375,8 +382,8 @@ required CI virtualiser.
 
 | ID | Risk | Likelihood | Impact | Mitigation / decision |
 | --- | --- | --- | --- | --- |
-| R0 | Current sandbox cannot run Linux or virtualisation, so nothing can be built or boot-tested here | Certain | Critical | Stop at Phase 0 and move builds to a Debian 13 host, CI, or a user-provided SSH builder. No false completion claims. |
-| R1 | Oracle Guest Additions are non-free; Debian 13 stable lacks Guest Utilities | High | High | License audit; try Debian `contrib` backport; otherwise ship VMSVGA + documented optional installation and explicitly mark requirement as partial. |
+| R0 | Current sandbox cannot run Linux or virtualisation, so nothing can be built or boot-tested here | Certain | Critical | Build on a Debian 13 host or GitHub Actions. Phase 1 is implemented and statically checked, but acceptance stays open until an ISO boots. No false completion claims. |
+| R1 | Oracle Guest Additions are non-free; Debian 13 stable lacks Guest Utilities | High | High | Not bundled. VMSVGA + open-source `vmwgfx`/Mesa is used; clipboard/resize/shared folders are documented as unavailable in [`virtualbox-limitations.md`](virtualbox-limitations.md). Requirement explicitly unmet. |
 | R2 | "Open-source only" conflicts with firmware and NVIDIA requirements | Certain | Medium | Default: redistributable non-free firmware in the image for hardware support; NVIDIA driver is opt-in during install; no Oracle PUEL components. Document every exception. |
 | R3 | Wayland/Plasma fails under VirtualBox or software rendering | Medium | High | X11 fallback session; VMSVGA; boot marker checks both sessions; CI uses QEMU without GL acceleration. |
 | R4 | Calamares alongside/manual partitioning is destructive or fails | Medium | Critical | Back up before test; use disposable virtual disks; typed confirmation; test erase/alongside/LUKS matrices; never auto-select erase. |
@@ -400,10 +407,17 @@ required CI virtualiser.
 - Guaranteed support for every PC. The release is x86_64, UEFI-first, with a
   documented hardware compatibility matrix.
 
-## 14. Phase 0 exit criteria
+## 14. Phase gates
+
+Phase 0 exit criteria — met:
 
 - Architecture, base distribution, desktop approach and installer chosen.
 - Risks and licence conflicts recorded.
 - Repository skeleton and build entry points created.
-- A decision on a Linux build environment made before any "working ISO"
-  claim. The current sandbox does not satisfy that requirement.
+
+Phase 1 — implemented, not accepted:
+
+- live-build tree, package lists, hooks, branding and QEMU test driver exist;
+- local static checks pass;
+- **no ISO has been built, no QEMU or VirtualBox boot has run, and no
+  screenshot exists.** Acceptance remains open until those results exist.

@@ -1,0 +1,47 @@
+# EclipseOS Phase 1 desktop stack.
+#
+# X11 plus lightdm and openbox: the smallest honest graphical session that
+# proves the display stack on UEFI and BIOS. Phase 2 replaces lightdm/openbox
+# with the full Plasma session; nothing here is on the Phase 2 critical path
+# except the X server, fonts and the X11 video drivers.
+#
+# Every package is from Debian main (docs/licenses.md).
+
+# Display manager and greeter
+lightdm
+lightdm-gtk-greeter
+
+# X server, input and video drivers.
+# xserver-xorg-core provides the modesetting driver used by real hardware and
+# by QEMU (bochs-drm/ virtio). The vesa/fbdev/vmware drivers cover VirtualBox
+# (VMSVGA exposes a VMware SVGA II device) and firmware fallbacks.
+# xserver-xorg-legacy keeps X startable on consoles that do not have a logind
+# seat (and is the standard Debian desktop configuration).
+xserver-xorg-core
+xserver-xorg-legacy
+xserver-xorg-input-libinput
+xserver-xorg-video-vesa
+xserver-xorg-video-fbdev
+xserver-xorg-video-vmware
+xinit
+xauth
+x11-utils
+x11-xserver-utils
+
+# Boot splash. The script plugin lives in the main plymouth package; the
+# EclipseOS theme is shipped in includes.chroot, so plymouth-themes is not
+# installed (no Debian theme artwork ends up in the image).
+plymouth
+
+# Session and shell
+openbox
+xterm
+feh
+fastfetch
+
+# Fonts, icons, cursors
+fonts-dejavu-core
+fonts-liberation
+fonts-inter
+adwaita-icon-theme
+hicolor-icon-theme

@@ -1,50 +1,43 @@
 # EclipseOS branding
 
-All product artwork is original and will be released under the project
-licence. No Microsoft assets are permitted.
+All product artwork in this repository is original and released under the
+project licence (GPL-3.0-or-later). No Microsoft assets are permitted or used.
 
-Planned assets:
+## Phase 1 assets
+
+`branding/tokens.json` is the source of truth for the palette. `render.py`
+renders the Phase 1 artwork with the Python standard library only (no Pillow,
+Cairo or SVG dependency). The generated PNGs are not committed; `make iso`
+runs the renderer and stages them into the live-build tree.
+
+Current outputs:
 
 ```text
 branding/
-├── logo/
-│   ├── eclipseos-mark.svg          # standalone symbol
-│   ├── eclipseos-wordmark.svg      # symbol + EclipseOS typography
-│   └── eclipseos-monochrome.svg
-├── wallpapers/
-│   ├── eclipseos-dawn.svg          # default light
-│   ├── eclipseos-midnight.svg      # default dark
-│   └── exports/                    # PNG/JPEG rendered at product sizes
-├── icons/
-│   ├── apps/                       # original app icons for Eclipse apps
-│   └── places/                     # Eclipse Files sidebar icons
-├── grub/
-│   ├── background.svg
-│   ├── theme.txt
-│   └── fonts/
-├── plymouth/
-│   ├── eclipseos.plymouth
-│   ├── eclipseos.script
-│   └── assets/
-├── sddm/
-│   └── eclipseos/                  # QML theme assets
-└── tokens.json                     # design tokens / palette / spacing
+├── render.py                             # deterministic, dependency-free renderer
+├── tokens.json                           # palette and geometry tokens
+└── assets/                               # generated, gitignored
+    ├── eclipseos-wallpaper-1920x1080.png
+    ├── eclipseos-grub-splash-1024x768.png
+    ├── eclipseos-plymouth-splash-1920x1080.png
+    ├── eclipseos-progress-track.png      # Plymouth progress bar track (360x4)
+    ├── eclipseos-progress-fill.png       # Plymouth progress bar fill (360x4)
+    ├── eclipseos-mark.png                # 1024x1024 RGBA
+    ├── eclipseos-mark-256.png            # 256x256 RGBA
+    └── eclipseos-logo.svg
 ```
 
-Identity brief:
+The GRUB splash, Plymouth splash, progress bar, wallpaper and mark are used by
+`build/config/bootloaders/grub-pc/` and the Plymouth theme in
+`build/config/includes.chroot/`. `scripts/build.sh` copies them into place and
+`9900-verify.chroot` fails the build if they are missing.
 
-- Eclipse motif: a dark occluding disc inside a corona of violet-to-amber
-  light. The mark must remain legible at 16 px and as a single-colour glyph.
-- Default accent: a deep violet to warm amber gradient; UI surfaces use a
-  neutral violet-black rather than pure black in dark mode.
-- Type: Inter (SIL OFL) with Debian fallbacks; clean, not a Segoe copy.
-- Corners: 8 px for windows and large panels, 12–16 px for floating surfaces.
-- Motion: short (120–200 ms) ease-out transitions; no motion that traps input.
-- Accessibility: AA contrast in both themes, non-colour state indicators,
-  reduced-motion support.
-- Wallpapers: abstract eclipse/corona fields with enough negative space for
-  taskbar and desktop icons; no photographic Microsoft derivatives.
+The Eclipse motif is a dark occluding disc inside a violet-to-amber corona.
+The mark is designed to remain legible at small sizes and as a single-colour
+glyph. Inter (SIL OFL 1.1) is the UI font; DejaVu and Liberation are fallbacks.
 
-`tokens.json` is the source of truth for palette and geometry in Phase 2.
-Raster exports for GRUB/Plymouth/SDDM will be generated reproducibly from the
-SVG sources and checked in only if the build tool cannot render SVG.
+## Planned assets (Phase 2 and later)
+
+The full product will add application icons, place icons, SDDM theme assets,
+light/dark wallpaper variants and QML theme images. Those are not part of the
+Phase 1 live ISO and will be generated from the same tokens where practical.

@@ -1,9 +1,10 @@
 # EclipseOS licensing and component inventory
 
-Status: **Phase 0 preliminary inventory.** Package versions will be pinned and
-the final ISO will carry a generated, package-level licence manifest. This
-document records the licensing policy and every planned component known at
-this stage.
+Status: **Phase 1 implementation.** This document records the policy, the
+components selected for the Phase 1 live image, and every non-free exception.
+The package manifest is generated at build time; no ISO has been built or
+booted yet, so the package list below is the planned/selected set, not a
+scraped list from an image.
 
 ## Project licence
 
@@ -19,152 +20,193 @@ code are used.
 
 1. Every component included in the ISO must be redistributable.
 2. Open-source licences are strongly preferred.
-3. Non-free **firmware** required for hardware support may be included in the
-   `non-free-firmware` archive, but must be identified in the manifest and in
-   the release notes. This is a deliberate exception to "open-source only".
-4. Proprietary GPU drivers are offered as an **opt-in installer action**, not
-   silently preinstalled. The user must see the licence and size.
-5. Oracle VirtualBox Guest Additions and the VirtualBox Extension Pack are
-   **not distributed** with EclipseOS because they are not open source.
-   Whether Debian's `virtualbox-guest-utils` contrib package can be shipped is
-   an open licence/backport question for Phase 1.
+3. Redistributable device **firmware** from Debian's `non-free-firmware`
+   archive may be included by default for hardware support. Every package is
+   listed in this document and in the generated manifest.
+4. Proprietary GPU drivers are **not** in the ISO. NVIDIA is planned only as
+   an explicit installer opt-in in Phase 3, after the licence text, size and
+   Secure Boot MOK flow are shown to the user.
+5. Oracle VirtualBox Guest Additions and the Extension Pack are **not
+   distributed** because they are PUEL-licensed. Debian 13 stable does not
+   ship `virtualbox-guest-utils`; the requirement is unmet and documented in
+   [`virtualbox-limitations.md`](virtualbox-limitations.md).
 6. Flatpak applications are not part of the ISO. Their licences are shown by
    the store at install time.
-7. No review means no inclusion. The release gate is a generated licence
-   manifest plus manual review of any package with no machine-readable
-   copyright data.
+7. No review means no inclusion. The build fails if a package from `contrib`,
+   `non-free`, or an unapproved `non-free-firmware` package is installed.
 
-## Planned components
+## Default build versus `STRICT_FOSS=1`
 
-Exact upstream versions will be pinned in the live-build package list and
-recorded in `eclipseos-26.10-amd64.iso.buildinfo`.
+The default build enables the Debian `main` and `non-free-firmware` archive
+areas and installs the firmware list in
+`build/config/package-lists/eclipse-firmware.list.chroot.in`.
 
-### Foundation
+A strict build uses **`main` only** and does not generate the firmware package
+list:
 
-| Component | Planned use | Licence | Status |
+```bash
+make iso STRICT_FOSS=1
+# or
+make iso-strict
+```
+
+`scripts/build.sh` removes any previously generated firmware list and forces a
+clean build, so files from an earlier non-strict chroot cannot leak in.
+`auto/config` then passes only `--archive-areas main`. The generated
+`non-free-firmware.tsv` contains only its header, and
+`/usr/share/doc/eclipseos/packages.tsv` must contain no
+`non-free-firmware` lines. The build-time policy hook enforces this.
+
+**Cost of the strict build:** some Wi-Fi, Ethernet, graphics, audio and
+Bluetooth devices will not work without their firmware. The open-source
+drivers remain, but the hardware may not become usable. That is the honest
+trade-off, not a hidden failure.
+
+## Non-free exceptions in the default ISO
+
+Every package below comes from Debian's `non-free-firmware` archive. They are
+redistributable vendor firmware blobs, not drivers and not open source. Each
+package carries its own copyright file at `/usr/share/doc/<package>/copyright`
+inside the image.
+
+Expected Debian 13 versions at the time of writing: `20250410-2` for the
+firmware bundle packages, and `1:1.5-13` for `firmware-zd1211`. The build
+manifest records the actual installed versions.
+
+| Package(s) | Licence | Why it is included | How to remove |
 | --- | --- | --- | --- |
-| Debian 13 base (`trixie`) | Userland, package management, init scripts, security support | Mixed DFSG-free licences; per-package copyright under `/usr/share/doc/*/copyright` | Reused |
-| Linux kernel | Hardware support | GPL-2.0-only (with separately licensed firmware blobs) | Reused |
-| systemd | Init, services, logind, timers | LGPL-2.1-or-later | Reused |
-| live-boot / live-config | Live media boot | GPL-3.0-or-later | Reused |
-| live-build | Image build tooling | GPL-3.0-or-later | Reused (build host only) |
+| `firmware-amd-graphics` | AMD firmware licence (redistributable, non-free) | AMD GPU display and power-management firmware; needed for reliable amdgpu operation on many laptops and desktops | `make iso STRICT_FOSS=1` |
+| `firmware-intel-graphics` | Intel firmware licence (redistributable, non-free) | Intel GPU firmware (GuC/HuC/DMC) for modern integrated graphics | `make iso STRICT_FOSS=1` |
+| `firmware-intel-misc` | Intel firmware licence (redistributable, non-free) | Miscellaneous Intel device firmware, including some networking and platform blocks | `make iso STRICT_FOSS=1` |
+| `firmware-intel-sound` | Intel firmware licence (redistributable, non-free) | Intel audio DSP firmware for laptops that require it | `make iso STRICT_FOSS=1` |
+| `firmware-atheros` | Qualcomm Atheros firmware licence (redistributable, non-free) | Atheros Wi-Fi and Bluetooth adapters | `make iso STRICT_FOSS=1` |
+| `firmware-brcm80211` | Broadcom firmware licence (redistributable, non-free) | Broadcom Wi-Fi adapters common in laptops | `make iso STRICT_FOSS=1` |
+| `firmware-iwlwifi` | Intel firmware licence (redistributable, non-free) | Intel Wi-Fi adapters, including many ThinkPads and business laptops | `make iso STRICT_FOSS=1` |
+| `firmware-mediatek` | MediaTek firmware licence (redistributable, non-free) | MediaTek Wi-Fi/Bluetooth adapters | `make iso STRICT_FOSS=1` |
+| `firmware-realtek` | Realtek firmware licence (redistributable, non-free) | Realtek wired and wireless adapters, including common USB Ethernet dongles | `make iso STRICT_FOSS=1` |
+| `firmware-bnx2`, `firmware-bnx2x` | Broadcom firmware licence (redistributable, non-free) | Broadcom NetXtreme server/desktop Ethernet | `make iso STRICT_FOSS=1` |
+| `firmware-cavium` | Cavium/Marvell firmware licence (redistributable, non-free) | Cavium network adapters | `make iso STRICT_FOSS=1` |
+| `firmware-myricom` | Myricom firmware licence (redistributable, non-free) | Myricom 10G adapters | `make iso STRICT_FOSS=1` |
+| `firmware-netronome` | Netronome firmware licence (redistributable, non-free) | Netronome network adapters | `make iso STRICT_FOSS=1` |
+| `firmware-netxen` | QLogic firmware licence (redistributable, non-free) | NetXen/QLogic network adapters | `make iso STRICT_FOSS=1` |
+| `firmware-qlogic` | QLogic firmware licence (redistributable, non-free) | QLogic Fibre Channel and network adapters | `make iso STRICT_FOSS=1` |
+| `firmware-libertas` | Marvell firmware licence (redistributable, non-free) | Marvell Libertas Wi-Fi adapters | `make iso STRICT_FOSS=1` |
+| `firmware-marvell-prestera` | Marvell firmware licence (redistributable, non-free) | Marvell Prestera network switch/accelerator firmware | `make iso STRICT_FOSS=1` |
+| `firmware-samsung` | Samsung firmware licence (redistributable, non-free) | Samsung laptop/SSD-related firmware | `make iso STRICT_FOSS=1` |
+| `firmware-siano` | Siano firmware licence (redistributable, non-free) | Siano mobile TV receivers | `make iso STRICT_FOSS=1` |
+| `firmware-ti-connectivity` | Texas Instruments firmware licence (redistributable, non-free) | TI Wi-Fi/Bluetooth adapters | `make iso STRICT_FOSS=1` |
+| `firmware-zd1211` | ZyDAS firmware licence (redistributable, non-free) | ZyDAS USB Wi-Fi adapters | `make iso STRICT_FOSS=1` |
+| `firmware-qcom-soc` | Qualcomm firmware licence (redistributable, non-free) | Qualcomm SoC firmware for supported laptops | `make iso STRICT_FOSS=1` |
+| `firmware-misc-nonfree` | Mixed vendor firmware licences (redistributable, non-free) | Assorted device firmware not covered by the specialised packages | `make iso STRICT_FOSS=1` |
+
+The authoritative build-time allowlist is the `ALLOWED_FIRMWARE` list in
+`build/config/hooks/normal/0300-licences.chroot`. It must stay in sync with
+the package-list template and this table.
+
+### Deliberately excluded non-free packages
+
+| Package | Reason |
+| --- | --- |
+| `firmware-nvidia-graphics` | NVIDIA GPU firmware; the NVIDIA driver must be an explicit installer opt-in, never preinstalled. |
+| `nvidia-driver`, `nvidia-kernel-dkms`, `nvidia-kernel-support` | Proprietary driver stack. Not in the ISO. Phase 3 may offer it as a clearly labelled opt-in with Secure Boot MOK instructions. |
+| `firmware-ivtv` | Requires the user to accept a licence at install time; not suitable for a silent live image. |
+| `firmware-ipw2x00` | Same licence-acceptance problem. |
+| `firmware-sof-signed` | Audio DSP firmware outside the approved hardware scope; can be added after review. |
+| `amd64-microcode`, `intel-microcode` | CPU microcode is a Phase 6 hardware-hardening decision, not part of the Phase 1 live image. |
+| `virtualbox-guest-utils` | Not available in Debian 13 stable; licensing review incomplete. See [`virtualbox-limitations.md`](virtualbox-limitations.md). |
+| `virtualbox-guest-additions-iso` | Oracle PUEL; never bundled. |
+| Oracle VirtualBox Extension Pack | Oracle PUEL; never bundled. |
+
+`firmware-linux-free` is in Debian `main` and is DFSG-free; it is not an
+exception.
+
+## Component inventory
+
+### Foundation (Phase 1)
+
+| Component | Use | Licence | Source/status |
+| --- | --- | --- | --- |
+| Debian 13 `trixie` base | Userland, package management, init scripts, security support | Mixed DFSG-free licences; per-package copyright under `/usr/share/doc/*/copyright` | Reused |
+| Linux kernel (`linux-image-amd64`) | Hardware support | GPL-2.0-only, with separately licensed firmware | Reused |
+| systemd | Init, services, logind, timesync | LGPL-2.1-or-later | Reused |
+| live-boot, live-boot-initramfs-tools | Live media boot | GPL-3.0-or-later | Reused |
+| live-config | Live-session reconfiguration | GPL-3.0-or-later | **Deliberately not installed**; EclipseOS bakes identity, user and services at build time |
+| live-build | Image build tooling | GPL-3.0-or-later | Build host only; not in the ISO |
 | GRUB 2 | UEFI and BIOS boot menu | GPL-3.0-or-later | Reused; EclipseOS theme is original |
-| shim | Secure Boot chain | BSD-2-Clause / efitools licence mix; verify Debian package | Planned for RC |
 | Plymouth | Graphical boot splash | GPL-2.0-or-later | Reused; EclipseOS theme is original |
-| Calamares | Installer | GPL-3.0-or-later | Reused; EclipseOS configuration/branding is original |
-| NetworkManager | Network management | LGPL-2.1-or-later / GPL-2.0-or-later components | Reused |
-| PipeWire / WirePlumber | Audio and media graph | MIT | Reused |
-| BlueZ | Bluetooth | LGPL-2.1-or-later | Reused |
-| CUPS | Printing | Apache-2.0 | Reused |
-| Avahi | mDNS/service discovery | LGPL-2.1-or-later | Reused |
-| power-profiles-daemon | Power profiles | GPL-3.0-or-later | Reused |
-| fwupd | Firmware updates | LGPL-2.1-or-later | Reused |
-| nftables / ufw or firewalld | Firewall | GPL-2.0 / GPL-3.0-or-later (verify selected package) | Phase 1 decision |
-| unattended-upgrades | Automatic security updates | GPL-2.0-or-later | Reused |
-| Flatpak | Application sandbox/runtime manager | LGPL-2.1-or-later | Reused |
+| LightDM / LightDM GTK Greeter | Live login and autologin | GPL-3.0-or-later / GPL-2.0-or-later | Reused; EclipseOS configuration is original; Phase 2 replaces with SDDM/Plasma |
+| openbox | Phase 1 window manager | GPL-2.0-or-later | Reused |
+| xterm, feh, fastfetch | Phase 1 session tools | MIT / MIT / MIT | Reused |
+| NetworkManager, wpasupplicant | Networking | LGPL-2.1-or-later / BSD-3-Clause | Reused |
+| X.Org X server and drivers | X11 display stack | MIT and compatible licences | Reused |
+| Mesa and kernel graphics drivers | OpenGL and GPU support | MIT / GPL-2.0 / LGPL-2.1 | Reused as dependencies |
+| Inter | UI font | SIL Open Font License 1.1 | Reused; reserved name unmodified |
+| DejaVu, Liberation fonts | Fallback fonts | Bitstream Vera / GPL-2.0 with font exception | Reused |
+| Adwaita and hicolor icon themes | Base icons | LGPL-3.0-or-later / public-domain-ish (verify package copyright) | Reused |
+| EclipseOS logo, wallpaper, GRUB/Plymouth artwork, scripts | Product identity and integration | GPL-3.0-or-later (project) | Original |
 
-### Desktop
+### Planned for Phase 2 and later (not in the Phase 1 ISO)
 
-| Component | Planned use | Licence | Status |
+| Component | Use | Licence | Status |
 | --- | --- | --- | --- |
-| KDE Plasma / Plasma Workspace 6.3 | Desktop session, panel, system tray, notifications | GPL-2.0-or-later and LGPL-2.1-or-later (mixed) | Reused |
-| KWin | Compositor and window management | GPL-2.0-or-later | Reused |
-| SDDM | Login greeter | GPL-2.0-or-later | Reused; EclipseOS QML theme is original |
-| KRunner | Global search | LGPL-2.1-or-later / GPL-2.0-or-later components | Reused |
-| Qt 6 | Application toolkit | LGPL-3.0-only with Qt exceptions / GPL-3.0 | Reused |
-| KDE Frameworks 6 | KDE libraries | LGPL-2.1-or-later and compatible | Reused |
-| Inter | UI font | SIL Open Font License 1.1 | Reused, redistributable |
-| KDE Breeze icons | Base icon set | LGPL-3.0-or-later (verify package copyright) | Reused |
-| Papirus icon theme (optional) | Supplemental icons | GPL-3.0-or-later | Candidate; licence audit |
-| EclipseOS logo, wallpapers, theme, GRUB/Plymouth/SDDM artwork | Product identity | GPL-3.0-or-later (project) | Original |
+| KDE Plasma / KWin 6.3 | Desktop session, compositor | GPL-2.0-or-later / LGPL-2.1-or-later | Planned |
+| SDDM | Installed-system greeter | GPL-2.0-or-later | Planned |
+| KDE Frameworks 6 / Qt 6 | Desktop libraries | LGPL-2.1-or-later / LGPL-3.0 / GPL-3.0 | Planned |
+| Dolphin, Konsole, Kate, Gwenview, Haruna, KCalc, Spectacle | Applications | GPL-2.0-or-later / LGPL-2.1-or-later | Planned |
+| Discover / PackageKit | Store and package management | GPL-2.0-or-later / LGPL-2.1-or-later | Planned |
+| Calamares | Installer | GPL-3.0-or-later | Planned; branding/configuration original |
+| Firefox ESR | Browser | MPL-2.0 (and compatible) | Planned |
+| Flatpak | Application sandbox | LGPL-2.1-or-later | Planned |
 
-### Applications
+## Generated manifest and build-time gate
 
-| Component | Planned use | Licence | Status |
-| --- | --- | --- | --- |
-| Firefox ESR | Web browser | MPL-2.0 (some files under compatible licences) | Reused |
-| Dolphin | Eclipse Files, rebranded | GPL-2.0-or-later | Reused |
-| Konsole | Eclipse Terminal, rebranded | GPL-2.0-or-later | Reused |
-| Kate | Text editor | LGPL-2.1-or-later / GPL-2.0-or-later components | Reused |
-| Gwenview | Image viewer | GPL-2.0-or-later | Reused |
-| Haruna | Media player | GPL-3.0-or-later (verify package) | Reused |
-| KCalc | Calculator | GPL-2.0-or-later | Reused |
-| Spectacle | Screenshot tool | GPL-2.0-or-later | Reused |
-| Discover | Eclipse Store, rebranded | GPL-2.0-or-later (verify package) | Reused |
-| PackageKit | Package management backend | GPL-2.0-or-later / LGPL-2.1-or-later | Reused |
-| Eclipse Settings | Custom unified settings app | GPL-3.0-or-later | Original |
-| Eclipse Update | Custom update UI | GPL-3.0-or-later | Original |
-| PolicyKit | Privilege separation | LGPL-2.1-or-later | Reused |
-| Open-Meteo API (optional weather widget) | Weather data | Data under CC BY 4.0; service terms apply | External service; opt-in |
+`build/config/hooks/normal/0300-licences.chroot` writes:
 
-### Firmware, drivers and VM support
+- `/usr/share/doc/eclipseos/packages.tsv` — every installed package with
+  version, architecture, archive area and section;
+- `/usr/share/doc/eclipseos/non-free-firmware.tsv` — the approved exceptions
+  actually present.
 
-These are the honest exceptions and open items. None are silently installed
-without documentation.
+It fails the build if:
 
-| Component | Planned use | Licence | Status |
-| --- | --- | --- | --- |
-| `firmware-iwlwifi`, `firmware-realtek`, `firmware-atheros`, `firmware-brcm80211`, etc. | Wi-Fi/Ethernet/Bluetooth hardware enablement | Mixed vendor licences; redistributable, mostly not open source | Candidate for non-free-firmware; must be listed in manifest |
-| `amd64-microcode`, `intel-microcode` | CPU stability/security | Vendor licences; redistributable | Candidate; user-visible |
-| NVIDIA proprietary driver | Opt-in GPU support | NVIDIA licence | Not in ISO by default; offered by installer; Secure Boot MOK flow required |
-| Mesa, amdgpu, i915, nouveau | Open-source graphics | MIT / GPL-2.0 / LGPL-2.1 | Reused |
-| VirtualBox Guest Utilities | Clipboard, shared folders, resize | Debian contrib; exact licence must be audited | **Not approved yet**; Debian 13 stable lacks the package |
-| Oracle VirtualBox Guest Additions ISO | Official VM integration | Oracle PUEL | **Not distributed** |
-| VirtualBox Extension Pack | USB 3.0, VRDP, encryption | Oracle PUEL | **Not distributed** |
+- any package comes from `contrib` or `non-free`;
+- any `non-free-firmware` package is not in the allowlist above.
 
-### Build and test dependencies (not in ISO)
+`build/config/hooks/normal/9900-verify.chroot` then asserts that the files,
+branding assets, live account policy and enabled units are present. Both hooks
+run inside the chroot before the squashfs is created. The manifest generation
+has **not yet run against a built ISO**; it is part of the Phase 1
+implementation awaiting a Linux build/CI run.
 
-| Component | Licence | Notes |
-| --- | --- | --- |
-| QEMU | GPL-2.0-only | Test host |
-| OVMF / edk2 | BSD-2-Clause-Patent and compatible | UEFI test firmware |
-| xorriso / libisoburn | GPL-3.0-or-later | ISO production |
-| squashfs-tools | GPL-2.0-or-later | Live root filesystem |
-| Python 3 | PSF-2.0 | Test and helper scripts |
-| Git | GPL-2.0-only | Source management |
+The build also stages this document and the project licence into the image:
 
-## Generated manifest requirement
-
-Before any release candidate:
-
-1. Add `build/config/hooks/` logic to emit
-   `licenses/packages.tsv` with package name, version, architecture, Debian
-   archive area, and copyright file path.
-2. Copy the complete Debian copyright texts into the live image at
-   `/usr/share/doc/` (normal Debian behaviour).
-3. Copy the EclipseOS licence, this inventory, upstream attributions, and
-   original asset licences into `/usr/share/licenses/eclipseos/`.
-4. Fail the release if a package is in a non-free area and is not listed as
-   an approved exception.
-5. Archive the manifest alongside the ISO and SHA256.
-
-The default Debian package contents already include their copyright files;
-the manifest makes the inventory reviewable without booting the image.
+- `/usr/share/doc/eclipseos/copyright` — GPL-3.0-or-later text;
+- `/usr/share/doc/eclipseos/licenses.md` — this inventory;
+- `/usr/share/doc/eclipseos/version` — release and build metadata.
 
 ## Attribution and trademark notes
 
-- KDE, Plasma, KWin, Dolphin, Konsole, Kate, Gwenview and Discover are
-  trademarks/names of their respective projects; EclipseOS renames only the
-  visible product entries where allowed by the licences and does not claim
-  endorsement.
+- KDE, Plasma, KWin, Dolphin, Konsole, Kate, Gwenview and Discover are names
+  of their respective projects; EclipseOS does not claim endorsement.
 - Firefox is a trademark of the Mozilla Foundation. The unmodified Debian
-  Firefox ESR build is used, and EclipseOS does not claim Mozilla endorsement.
-- Intel, AMD, NVIDIA, Realtek, Broadcom and other hardware names are
+  Firefox ESR build will be used in Phase 2/4; EclipseOS does not claim
+  Mozilla endorsement.
+- Intel, AMD, NVIDIA, Realtek, Broadcom, Qualcomm and other hardware names are
   trademarks of their owners.
 - Inter is licensed under the SIL OFL 1.1; the reserved font name is used
   unmodified.
-- If Papirus icons are included, their GPL terms and attribution will be kept.
-- Open-Meteo attribution will appear in the weather widget settings/about
-  screen if the widget ships.
+- Open-Meteo (future optional weather widget) is an external service; its
+  attribution will appear in the widget if it ships.
 
-## Open licensing decisions for Phase 1
+## Open decisions
 
-1. **Firmware:** include redistributable `non-free-firmware` for hardware
-   support, or produce a strictly open-source ISO with degraded hardware?
-   The architecture currently recommends inclusion with a manifest.
-2. **VirtualBox Guest Utilities:** seek a legally reviewed backport from
-   Debian unstable/contrib; if unavailable, do not bundle and document the
-   limitation. Display resize via VMSVGA does not require the proprietary
-   Guest Additions.
-3. **NVIDIA:** keep the driver installer-optional, and only after Secure Boot
-   MOK handling is documented and tested.
+1. **NVIDIA opt-in:** implement in Phase 3 as an installer action that shows
+   the licence, download size and Secure Boot MOK steps. Do not add it to the
+   default package list.
+2. **CPU microcode:** decide in Phase 6 whether to ship redistributable
+   microcode updates; if so, add them to the exception table and manifest.
+3. **Guest utilities:** revisit only after a Debian stable package and a
+   licence review exist. Until then, the requirement is unmet.
+4. **Snapshot pinning:** release builds will pin Debian sources to a snapshot;
+   the exact package versions and copyright texts will then be archived with
+   the ISO.

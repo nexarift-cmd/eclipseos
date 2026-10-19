@@ -1,0 +1,132 @@
+#!/bin/sh
+#
+# EclipseOS 0300-licences: generate the in-image package manifest and enforce
+# the non-free policy at build time.
+#
+# Policy (docs/licenses.md): the only non-free components allowed in the ISO
+# are redistributable device-firmware packages from Debian's
+# non-free-firmware archive. Anything from contrib or non-free, and any
+# non-free-firmware package not named below, fails the build instead of
+# shipping silently.
+set -eu
+export LC_ALL=C
+
+DOC_DIR=/usr/share/doc/eclipseos
+
+fail() {
+    printf '0300-licences: %s\n' "$*" >&2
+    exit 1
+}
+
+for file in copyright licenses.md version; do
+    [ -s "$DOC_DIR/$file" ] \
+        || fail "$DOC_DIR/$file is missing (scripts/build.sh must stage it)"
+done
+
+# Keep this list in sync with config/package-lists/eclipse-firmware.list.chroot.in
+# and with the exception table in docs/licenses.md.
+ALLOWED_FIRMWARE="
+firmware-amd-graphics
+firmware-atheros
+firmware-bnx2
+firmware-bnx2x
+firmware-brcm80211
+firmware-cavium
+firmware-intel-graphics
+firmware-intel-misc
+firmware-intel-sound
+firmware-iwlwifi
+firmware-libertas
+firmware-marvell-prestera
+firmware-mediatek
+firmware-misc-nonfree
+firmware-myricom
+firmware-netronome
+firmware-netxen
+firmware-qcom-soc
+firmware-qlogic
+firmware-realtek
+firmware-samsung
+firmware-siano
+firmware-ti-connectivity
+firmware-zd1211
+"
+
+# ---------------------------------------------------------------------------
+# Package manifest: every installed package, with its archive area.
+# dpkg's Section field carries the area prefix for non-main archives
+# ("non-free-firmware/kernel"); main packages have no prefix.
+# ---------------------------------------------------------------------------
+manifest_tmp="$(mktemp)"
+trap 'rm -f "$manifest_tmp"' EXIT
+
+dpkg-query -W \
+    -f='${db:Status-Abbrev}\t${Package}\t${Version}\t${Architecture}\t${Section}\n' \
+    | awk -F '\t' '
+        BEGIN { OFS = "\t" }
+        $1 ~ /^ii/ {
+            section = $5
+            area = "main"
+            if (section ~ /^non-free-firmware\//) {
+                area = "non-free-firmware"
+                sub(/^non-free-firmware\//, "", section)
+            } else if (section ~ /^non-free\//) {
+                area = "non-free"
+                sub(/^non-free\//, "", section)
+            } else if (section ~ /^contrib\//) {
+                area = "contrib"
+                sub(/^contrib\//, "", section)
+            } else if (section == "") {
+                section = "unknown"
+            }
+            print $2, $3, $4, area, section
+        }
+    ' | sort > "$manifest_tmp"
+
+{
+    printf '# EclipseOS 26.10 installed package manifest\n'
+    printf '# Generated at build time by build/config/hooks/normal/0300-licences.chroot\n'
+    printf '# package\tversion\tarchitecture\tarchive_area\tsection\n'
+    cat "$manifest_tmp"
+} > "$DOC_DIR/packages.tsv"
+
+# ---------------------------------------------------------------------------
+# Policy check
+# ---------------------------------------------------------------------------
+violations=0
+approved_count=0
+
+while IFS="$(printf '\t')" read -r package _version _arch area _section; do
+    [ "$area" = "main" ] && continue
+
+    if [ "$area" != "non-free-firmware" ]; then
+        printf '0300-licences: package %s is in the %s archive, which is not allowed\n' \
+            "$package" "$area" >&2
+        violations=$((violations + 1))
+        continue
+    fi
+
+    case " $(printf '%s' "$ALLOWED_FIRMWARE" | tr '\n' ' ') " in
+        *" $package "*)
+            approved_count=$((approved_count + 1))
+            ;;
+        *)
+            printf '0300-licences: non-free-firmware package %s is not an approved exception\n' \
+                "$package" >&2
+            violations=$((violations + 1))
+            ;;
+    esac
+done < "$manifest_tmp"
+
+[ "$violations" -eq 0 ] || fail "$violations package(s) violate the licence policy"
+
+{
+    printf '# EclipseOS 26.10 approved non-free-firmware exceptions\n'
+    printf '# Every entry is redistributable device firmware from the Debian\n'
+    printf '# non-free-firmware archive; no proprietary driver is included.\n'
+    printf '# package\tversion\tarchitecture\tsection\n'
+    awk -F '\t' -v OFS='\t' '$4 == "non-free-firmware" { print $1, $2, $3, $5 }' \
+        "$manifest_tmp"
+} > "$DOC_DIR/non-free-firmware.tsv"
+
+printf '0300-licences: %s approved non-free-firmware package(s)\n' "$approved_count"

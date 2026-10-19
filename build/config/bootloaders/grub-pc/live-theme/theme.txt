@@ -1,0 +1,75 @@
+# EclipseOS GRUB theme (original artwork, GPL-3.0-or-later).
+#
+# Rendered by GRUB on both the BIOS and UEFI boot paths. The font is the
+# unicode.pf2 copied next to grub.cfg; the desktop image is the generated
+# EclipseOS splash (branding/render.py).
+
+desktop-image: "../splash.png"
+desktop-image-scale-method: "crop"
+desktop-image-h-align: "center"
+desktop-image-v-align: "center"
+
+title-text: "EclipseOS"
+title-color: "#FFD166"
+title-font: "Unifont Regular 16"
+
+message-font: "Unifont Regular 16"
+message-color: "#C9C1D8"
+terminal-font: "Unifont Regular 16"
+
+# Attribution line at the very bottom
++ label {
+	top = 100%-26
+	left = 0
+	width = 100%
+	height = 20
+	text = "EclipseOS live image - based on Debian GNU/Linux 13 (trixie)"
+	align = "center"
+	color = "#5E5569"
+	font = "Unifont Regular 16"
+}
+
+# Keyboard help above the attribution line
++ label {
+	top = 100%-52
+	left = 0
+	width = 100%
+	height = 20
+	text = "@KEYMAP_SHORT@"
+	align = "center"
+	color = "#A78BFA"
+	font = "Unifont Regular 16"
+}
+
+# Boot menu
++ boot_menu {
+	left = 12%
+	width = 76%
+	top = 42%
+	height = 42%
+	item_color = "#C9C1D8"
+	item_font = "Unifont Regular 16"
+	selected_item_color = "#F5F1FA"
+	selected_item_font = "Unifont Regular 16"
+	item_height = 24
+	item_padding = 0
+	item_spacing = 6
+	icon_width = 0
+	icon_height = 0
+	item_icon_space = 0
+}
+
+# Timeout progress bar
++ progress_bar {
+	id = "__timeout__"
+	left = 15%
+	top = 100%-84
+	height = 12
+	width = 70%
+	font = "Unifont Regular 16"
+	text_color = "#0B0714"
+	fg_color = "#FFD166"
+	bg_color = "#241C35"
+	border_color = "#6C4DFF"
+	text = "@TIMEOUT_NOTIFICATION_LONG@"
+}

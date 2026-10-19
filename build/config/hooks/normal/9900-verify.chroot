@@ -1,0 +1,120 @@
+#!/bin/sh
+#
+# EclipseOS 9900-verify: last-resort checks before the root filesystem is
+# packed. Runs after every stock live-build hook, so it sees the tree that
+# will be squashed into the ISO.
+#
+# These checks exist so that a missing asset, a reverted account policy or an
+# unexpected package fails the build instead of producing an ISO that boots
+# into something else. They are cheap; keep them strict.
+set -eu
+export LC_ALL=C
+
+fail() {
+    printf '9900-verify: %s\n' "$*" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Required files
+# ---------------------------------------------------------------------------
+for file in \
+    /etc/hostname \
+    /etc/hosts \
+    /etc/resolv.conf \
+    /etc/os-release \
+    /etc/issue \
+    /etc/motd \
+    /etc/sudoers.d/90-eclipseos-live \
+    /etc/lightdm/lightdm.conf.d/50-eclipseos.conf \
+    /etc/lightdm/lightdm-gtk-greeter.conf \
+    /etc/plymouth/plymouthd.conf \
+    /etc/xdg/openbox/autostart \
+    /etc/xdg/openbox/menu.xml \
+    /etc/xdg/openbox/rc.xml \
+    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-welcome \
+    /usr/libexec/eclipseos/eclipseos-bootcheck \
+    /usr/lib/systemd/system/eclipseos-bootcheck.service \
+    /usr/share/xsessions/eclipseos.desktop \
+    /usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png \
+    /usr/share/pixmaps/eclipseos/eclipseos-mark-256.png \
+    /usr/share/plymouth/themes/eclipseos/eclipseos.plymouth \
+    /usr/share/plymouth/themes/eclipseos/eclipseos.script \
+    /usr/share/plymouth/themes/eclipseos/splash.png \
+    /usr/share/plymouth/themes/eclipseos/logo.png \
+    /usr/share/plymouth/themes/eclipseos/eclipseos-progress-track.png \
+    /usr/share/plymouth/themes/eclipseos/eclipseos-progress-fill.png \
+    /usr/share/themes/EclipseOS/openbox-3/themerc \
+    /usr/share/doc/eclipseos/copyright \
+    /usr/share/doc/eclipseos/licenses.md \
+    /usr/share/doc/eclipseos/packages.tsv \
+    /usr/share/doc/eclipseos/non-free-firmware.tsv \
+    ; do
+    [ -s "$file" ] || fail "missing or empty: $file"
+done
+
+for file in \
+    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-welcome \
+    /usr/libexec/eclipseos/eclipseos-bootcheck \
+    /etc/xdg/openbox/autostart \
+    ; do
+    [ -x "$file" ] || fail "not executable: $file"
+done
+
+# ---------------------------------------------------------------------------
+# Identity and live account
+# ---------------------------------------------------------------------------
+[ "$(cat /etc/hostname)" = "eclipseos" ] \
+    || fail "/etc/hostname is not 'eclipseos': $(cat /etc/hostname)"
+
+grep -qx 'ID=eclipseos' /etc/os-release \
+    || fail '/etc/os-release does not identify the system as eclipseos'
+
+grep -qw 'eclipseos' /etc/hosts \
+    || fail '/etc/hosts does not map the eclipseos hostname'
+
+id eclipse >/dev/null 2>&1 || fail 'live user eclipse does not exist'
+
+# Second field of `passwd -S` is NP for an account without a password.
+passwd -S eclipse 2>/dev/null | awk '{ exit ($2 == "NP") ? 0 : 1 }' \
+    || fail 'live user eclipse has a password set'
+
+grep -q '^eclipse ALL=' /etc/sudoers.d/90-eclipseos-live \
+    || fail 'the live sudo drop-in does not grant the eclipse user sudo'
+
+# The whole design depends on live-config not being present: it would rewrite
+# the hostname, users and services at boot.
+if dpkg-query -W -f='${db:Status-Abbrev}' live-config 2>/dev/null | grep -q '^ii'; then
+    fail 'live-config is installed; the live session would be reconfigured at boot'
+fi
+
+# The live image must not inherit the build host's resolver configuration.
+grep -q 'NetworkManager replaces' /etc/resolv.conf \
+    || fail '/etc/resolv.conf is not the EclipseOS fallback file'
+
+# ---------------------------------------------------------------------------
+# Boot units
+# ---------------------------------------------------------------------------
+for unit in lightdm.service NetworkManager.service eclipseos-bootcheck.service; do
+    [ "$(systemctl is-enabled "$unit" 2>/dev/null || true)" = "enabled" ] \
+        || fail "$unit is not enabled"
+done
+
+[ "$(systemctl get-default)" = "graphical.target" ] \
+    || fail 'the default systemd target is not graphical.target'
+
+grep -qx 'Theme=eclipseos' /etc/plymouth/plymouthd.conf \
+    || fail 'plymouth is not configured to use the EclipseOS theme'
+
+# ---------------------------------------------------------------------------
+# Desktop metadata
+# ---------------------------------------------------------------------------
+grep -q '^Exec=/usr/local/bin/eclipseos-session$' /usr/share/xsessions/eclipseos.desktop \
+    || fail 'the xsessions entry does not launch eclipseos-session'
+
+grep -qx 'autologin-user=eclipse' /etc/lightdm/lightdm.conf.d/50-eclipseos.conf \
+    || fail 'lightdm is not configured to autologin the live user'
+
+printf '9900-verify: all Phase 1 checks passed\n'

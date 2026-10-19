@@ -43,7 +43,9 @@ Options:
   -h, --help          Show this help
 
 The VM uses VMSVGA. Hardware 3D acceleration is enabled; if the guest desktop
-fails to render, retry with VirtualBox's software rendering or the X11 session.
+fails to render, retry with software rendering or the X11 session. Oracle
+Guest Additions are not included: clipboard sharing, shared folders and
+automatic resize are unavailable (see docs/virtualbox-limitations.md).
 EOF
 }
 
@@ -144,8 +146,6 @@ modify_args=(
     --rtcuseutc on
     --nic1 nat
     --natdnshostresolver1 on
-    --clipboard-mode bidirectional
-    --draganddrop bidirectional
     --boot1 dvd
     --boot2 disk
     --boot3 none

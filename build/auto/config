@@ -1,0 +1,96 @@
+#!/bin/sh
+#
+# EclipseOS live-build configuration.
+#
+# This file is executed by `lb config` and by `lb build`, which populates the
+# configuration tree automatically. The Debian live-build convention is to
+# re-invoke `lb config` here with `noauto` so that live-build does not recurse
+# into this script.
+#
+# Environment:
+#   STRICT_FOSS=1   build a strictly free ISO: no non-free-firmware archive and
+#                   no firmware package list. See docs/licenses.md.
+#   EOS_VERSION     overrides ../VERSION (normally exported by scripts/build.sh)
+#
+# Every option that changes what the user receives must be justified in
+# docs/architecture.md or docs/licenses.md. `make iso` is the only supported
+# entry point; scripts/build.sh prepares the generated parts of this tree
+# (branding assets, firmware list, GRUB font) before calling live-build.
+
+set -e
+
+# ---------------------------------------------------------------------------
+# Options read from the environment
+# ---------------------------------------------------------------------------
+
+STRICT_FOSS="${STRICT_FOSS:-0}"
+case "${STRICT_FOSS}" in
+    1|true|yes)
+        STRICT_FOSS=1
+        ;;
+    0|false|no|"")
+        STRICT_FOSS=0
+        ;;
+    *)
+        printf 'auto/config: invalid STRICT_FOSS value: %s\n' "${STRICT_FOSS}" >&2
+        exit 2
+        ;;
+esac
+
+if [ "${STRICT_FOSS}" = "1" ]; then
+    ARCHIVE_AREAS="main"
+else
+    # non-free-firmware is a deliberate, documented exception: redistributable
+    # device firmware only. Proprietary drivers and NVIDIA firmware are never
+    # included; see docs/licenses.md and docs/virtualbox-limitations.md.
+    ARCHIVE_AREAS="main non-free-firmware"
+fi
+
+if [ -z "${EOS_VERSION:-}" ]; then
+    for _candidate in ../VERSION ../../VERSION ./VERSION; do
+        if [ -r "${_candidate}" ]; then
+            EOS_VERSION="$(tr -d '\r\n' < "${_candidate}")"
+            break
+        fi
+    done
+fi
+EOS_VERSION="${EOS_VERSION:-26.10}"
+ISO_VOLUME="$(printf 'ECLIPSEOS_%s' "${EOS_VERSION}" | tr -d '.')"
+
+# ---------------------------------------------------------------------------
+# live-build invocation
+# ---------------------------------------------------------------------------
+
+lb config noauto \
+    --mode debian \
+    --architecture amd64 \
+    --distribution trixie \
+    --parent-distribution trixie \
+    --archive-areas "${ARCHIVE_AREAS}" \
+    --parent-archive-areas "${ARCHIVE_AREAS}" \
+    --binary-images iso-hybrid \
+    --bootloaders grub-pc,grub-efi \
+    --uefi-secure-boot auto \
+    --debian-installer none \
+    --memtest none \
+    --initramfs live-boot \
+    --initsystem systemd \
+    --firmware-chroot false \
+    --firmware-binary false \
+    --linux-flavours amd64 \
+    --linux-packages linux-image \
+    --chroot-filesystem squashfs \
+    --security true \
+    --updates true \
+    --proposed-updates false \
+    --apt-indices false \
+    --apt-recommends false \
+    --cache false \
+    --checksums sha256 \
+    --iso-application "EclipseOS ${EOS_VERSION}" \
+    --iso-preparer "EclipseOS build system" \
+    --iso-publisher "EclipseOS project" \
+    --iso-volume "${ISO_VOLUME}" \
+    --bootappend-live "boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8" \
+    --bootappend-live-failsafe "boot=live nosplash noapic noapm nodma nomce nosmp console=tty0 console=ttyS0,115200n8" \
+    "${@}"

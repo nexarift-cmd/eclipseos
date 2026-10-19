@@ -1,0 +1,71 @@
+# EclipseOS base system.
+#
+# Live userland, boot, init, network and console tools. No desktop packages
+# here; see eclipse-desktop.list.chroot. Every package below is in Debian
+# main and redistributable under its own licence (see docs/licenses.md).
+#
+# live-build strips lines beginning with '#'.
+
+# Live media boot (live-config is deliberately NOT installed: EclipseOS hosts,
+# users and locale are baked at build time so the live session is identical to
+# what is tested. See docs/architecture.md.)
+live-boot
+live-boot-initramfs-tools
+live-tools
+
+# Kernel, initramfs and module tools
+linux-image-amd64
+initramfs-tools
+zstd
+kmod
+
+# init, device management, session plumbing
+systemd
+systemd-sysv
+udev
+dbus
+libpam-systemd
+libnss-systemd
+libnss-myhostname
+systemd-timesyncd
+polkitd
+
+# Tools live-build expects inside the chroot
+dctrl-tools
+
+# Trust and update plumbing
+ca-certificates
+gpgv
+debian-archive-keyring
+
+# Accounts, locale, keyboard, clock
+adduser
+passwd
+sudo
+locales
+tzdata
+keyboard-configuration
+console-setup
+kbd
+
+# Console utilities for the live session
+bash-completion
+less
+nano
+man-db
+procps
+psmisc
+pciutils
+util-linux
+eject
+
+# Storage and network basics
+e2fsprogs
+iproute2
+iputils-ping
+netbase
+network-manager
+wpasupplicant
+
+# DFSG-free firmware kept in main
+firmware-linux-free

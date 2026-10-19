@@ -1,0 +1,90 @@
+#!/bin/sh
+#
+# EclipseOS 0100-branding: bake identity and the live account into the image.
+#
+# live-build has already copied config/includes.chroot/ over the freshly
+# installed Debian system when this hook runs. Everything here is offline and
+# idempotent; no network access is required or attempted.
+#
+# Deliberately NOT done here: /etc/hosts and /etc/resolv.conf are managed by
+# live-build's own chroot_prep remove step, which runs after this hook and
+# re-copies them from includes.chroot. Writing them here would be undone.
+set -eu
+export LC_ALL=C
+
+fail() {
+    printf '0100-branding: %s\n' "$*" >&2
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# OS identity
+# ---------------------------------------------------------------------------
+[ -s /usr/lib/os-release ] || fail '/usr/lib/os-release is missing'
+cp -f /usr/lib/os-release /etc/os-release
+chmod 0644 /etc/os-release
+grep -qx 'ID=eclipseos' /etc/os-release \
+    || fail '/usr/lib/os-release does not identify the system as eclipseos'
+
+printf 'eclipseos\n' > /etc/hostname
+chmod 0644 /etc/hostname
+
+# ---------------------------------------------------------------------------
+# Time zone: the live preview is deterministic and uses UTC. The Phase 3
+# installer asks the user for the real time zone.
+# ---------------------------------------------------------------------------
+[ -r /usr/share/zoneinfo/UTC ] || fail 'tzdata is not installed (no UTC zone)'
+ln -sfn /usr/share/zoneinfo/UTC /etc/localtime
+printf 'UTC\n' > /etc/timezone
+chmod 0644 /etc/timezone
+
+# ---------------------------------------------------------------------------
+# Live user
+# ---------------------------------------------------------------------------
+if ! id eclipse >/dev/null 2>&1; then
+    useradd \
+        --create-home \
+        --shell /bin/bash \
+        --comment 'EclipseOS live user' \
+        eclipse
+fi
+
+# Group membership is best-effort for groups that exist on this base system;
+# useradd --groups would fail if any of them were absent.
+for group in sudo audio video render plugdev netdev cdrom; do
+    if getent group "$group" >/dev/null 2>&1; then
+        usermod -aG "$group" eclipse
+    fi
+done
+
+# No password by design. lightdm uses its autologin PAM service; the empty
+# password only documents that the account cannot be logged into with one.
+passwd -d eclipse >/dev/null
+
+# The drop-in must not be writable by the live user.
+chmod 0440 /etc/sudoers.d/90-eclipseos-live
+visudo -c >/dev/null || fail '/etc/sudoers is invalid after the live drop-in'
+
+# ---------------------------------------------------------------------------
+# Session executables
+# ---------------------------------------------------------------------------
+# Git preserves the executable bit, but a checkout on a filesystem without
+# Unix modes (or an archive built by hand) can lose it. Set it explicitly:
+# a non-executable session or boot-check would otherwise produce a broken
+# image that still boots.
+for script in \
+    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-welcome \
+    /usr/libexec/eclipseos/eclipseos-bootcheck \
+    /etc/xdg/openbox/autostart; do
+    [ -f "$script" ] || fail "missing session executable: $script"
+    chmod 0755 "$script"
+done
+
+# ---------------------------------------------------------------------------
+# Console branding
+# ---------------------------------------------------------------------------
+# /etc/issue and /etc/motd are shipped in includes.chroot; fail loudly rather
+# than boot with Debian's identity if they did not arrive.
+grep -q 'EclipseOS' /etc/issue || fail '/etc/issue is not branded'
+grep -q 'EclipseOS' /etc/motd || fail '/etc/motd is not branded'

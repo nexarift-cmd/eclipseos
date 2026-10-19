@@ -35,20 +35,37 @@ ISO.**
 
 ## Option A (recommended): GitHub Actions
 
-A hosted Debian/Ubuntu runner can build the ISO and boot it in QEMU, then
-publish the ISO and screenshots as workflow artifacts. This requires a
-GitHub repository and no local Linux install.
+A hosted Ubuntu runner builds inside a privileged Debian 13 container, then
+boots the ISO in QEMU and publishes the image, checksum, serial logs and
+screenshots as artifacts. No local Linux install is required.
 
-The workflow is added in Phase 1. Typical requirements:
+The workflow is [`.github/workflows/build.yml`](../.github/workflows/build.yml).
+It:
+
+- frees disk space on the Ubuntu runner before starting;
+- runs `scripts/static-check.sh` (shell lint, Python/JSON syntax, desktop
+  entry);
+- starts `debian:13` with `--privileged` and the workspace bind-mounted;
+- installs `live-build`, GRUB, xorriso, squashfs tools, QEMU and OVMF inside
+  the container;
+- runs `make iso`;
+- runs `make -k test-all` for UEFI (OVMF) and BIOS (SeaBIOS);
+- uploads `eclipseos-*.iso`, `*.sha256`, `*.buildinfo`, `build.log`, serial
+  logs, `result.json` and screenshots;
+- can build both the default and `STRICT_FOSS=1` flavours on a manual
+  `workflow_dispatch` run.
+
+Requirements:
 
 - a public repository, or Actions budget for a private repository;
-- 30+ minutes of CI time per build, depending on cache and runner;
+- 30–60 minutes of CI time per build, depending on runner speed and TCG;
 - artifact storage for the ISO (several GB);
 - no KVM on standard runners, so boot tests use QEMU TCG and are slow;
-- a free-disk step to create enough room for a full KDE build.
+- a successful workflow run before any Phase 1 acceptance claim.
 
-Ask the maintainer/user to create the repository and push this tree. A local
-build with the same Makefile remains possible.
+**The workflow has not run yet.** It needs the repository to be pushed and a
+GitHub Actions run to be triggered. A local build with the same Makefile
+remains possible.
 
 ## Option B: dedicated Debian 13 build VM or machine
 
@@ -71,7 +88,7 @@ Run as a normal user with sudo, on Debian 13:
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   ca-certificates curl git make sudo \
-  live-build debootstrap xorriso squashfs-tools mtools dosfstools \
+  live-build debootstrap xorriso squashfs-tools mtools dosfstools cpio \
   grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
   isolinux syslinux-common \
   qemu-system-x86 qemu-utils ovmf python3
@@ -90,6 +107,14 @@ make doctor
 make iso
 sha256sum -c eclipseos-26.10-amd64.iso.sha256
 make test-all
+```
+
+Use `make iso STRICT_FOSS=1` (or `make iso-strict`) to build without
+`non-free-firmware`. The strict build forces a clean tree and uses only the
+Debian `main` archive. Static checks can be run without building:
+
+```bash
+make static-check
 ```
 
 `live-build` creates a chroot and needs root operations. `scripts/build.sh`

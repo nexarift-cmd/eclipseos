@@ -1,0 +1,15 @@
+[Unit]
+Description=EclipseOS live boot verification
+After=display-manager.service
+Wants=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/eclipseos/eclipseos-bootcheck
+RemainAfterExit=yes
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target

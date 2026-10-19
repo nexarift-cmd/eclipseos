@@ -1,0 +1,7 @@
+# EclipseOS live-session sudo policy (Phase 1 preview).
+#
+# The live user has no password, so sudo cannot prompt for one. This file is
+# part of the live image only; the Phase 3 installer must not copy the live
+# account or this drop-in into an installed system. Installed users must
+# authenticate with their own password.
+eclipse ALL=(ALL:ALL) NOPASSWD: ALL

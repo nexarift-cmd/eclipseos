@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=EclipseOS
+Description=EclipseOS boot splash (occluded sun)
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/eclipseos
+ScriptFile=/usr/share/plymouth/themes/eclipseos/eclipseos.script

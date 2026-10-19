@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 MARKER = "ECLIPSEOS_BOOT_OK"
+FAIL_MARKER = "ECLIPSEOS_BOOT_FAIL"
 OVMF_PAIRS = (
     ("/usr/share/OVMF/OVMF_CODE_4M.fd", "/usr/share/OVMF/OVMF_VARS_4M.fd"),
     ("/usr/share/OVMF/OVMF_CODE.fd", "/usr/share/OVMF/OVMF_VARS.fd"),
@@ -179,6 +180,23 @@ def write_png_from_ppm(ppm_path: Path, png_path: Path) -> None:
     png_path.write_bytes(png)
 
 
+def capture_screenshot(
+    qmp: Qmp, outdir: Path, stem: str, *, inspect: bool = False
+) -> tuple[Path, dict | None]:
+    """Save one QMP screendump as PNG; the intermediate PPM is removed."""
+    ppm_path = outdir / f"{stem}.ppm"
+    png_path = outdir / f"{stem}.png"
+    try:
+        qmp.command("screendump", {"filename": str(ppm_path)})
+        if not ppm_path.is_file() or ppm_path.stat().st_size == 0:
+            raise RuntimeError("QMP returned no screenshot data")
+        info = inspect_ppm(ppm_path) if inspect else None
+        write_png_from_ppm(ppm_path, png_path)
+        return png_path, info
+    finally:
+        ppm_path.unlink(missing_ok=True)
+
+
 def inspect_ppm(ppm_path: Path) -> dict:
     """Report whether the framebuffer contains meaningful content."""
     data = ppm_path.read_bytes()
@@ -286,6 +304,18 @@ def main() -> int:
     parser.add_argument("--memory", type=int, default=4096)
     parser.add_argument("--cpus", type=int, default=2)
     parser.add_argument("--outdir", required=True)
+    parser.add_argument(
+        "--screenshot-interval",
+        type=int,
+        default=30,
+        help="seconds between early diagnostic screenshots (0 disables; default 30)",
+    )
+    parser.add_argument(
+        "--max-screenshots",
+        type=int,
+        default=10,
+        help="maximum number of early screenshots (default 10)",
+    )
     args = parser.parse_args()
 
     iso = Path(args.iso).resolve()
@@ -296,8 +326,6 @@ def main() -> int:
 
     serial_path = outdir / "serial.log"
     qemu_log = outdir / "qemu.log"
-    screenshot_ppm = outdir / "screenshot.ppm"
-    screenshot_png = outdir / "screenshot.png"
     result_path = outdir / "result.json"
     serial_path.write_bytes(b"")
     qemu_log.write_bytes(b"")
@@ -310,8 +338,11 @@ def main() -> int:
 
     started = time.monotonic()
     marker_line = ""
+    fail_line = ""
     failed_units: int | None = None
     screenshot_result: dict | None = None
+    early_screenshots: list[str] = []
+    final_png: Path | None = None
     failure_reason = ""
 
     with qemu_log.open("wb") as log_handle:
@@ -332,21 +363,52 @@ def main() -> int:
 
         deadline = started + args.timeout
         next_status = started + 15
+        next_qmp_retry = started + 2
+        next_screenshot = started + 8.0
+        screenshot_count = 0
+
         while time.monotonic() < deadline:
             if process.poll() is not None:
                 failure_reason = f"QEMU exited early with status {process.returncode}"
                 break
             serial_text = serial_path.read_text(errors="replace")
             for line in serial_text.splitlines():
+                if FAIL_MARKER in line:
+                    fail_line = line.strip()
+                    break
                 if MARKER in line:
                     marker_line = line.strip()
                     units = re.search(r"failed_units=(\d+)", line)
                     if units:
                         failed_units = int(units.group(1))
                     break
-            if marker_line:
+            if marker_line or fail_line:
                 break
+
             now = time.monotonic()
+            if qmp is None and now >= next_qmp_retry:
+                try:
+                    qmp = Qmp(qmp_socket, timeout=2.0)
+                except Exception:
+                    next_qmp_retry = now + 10.0
+
+            if (
+                qmp is not None
+                and args.screenshot_interval > 0
+                and screenshot_count < args.max_screenshots
+                and now >= next_screenshot
+            ):
+                elapsed_shot = int(now - started)
+                stem = f"boot-{screenshot_count + 1:02d}-{elapsed_shot:04d}s"
+                try:
+                    path, _ = capture_screenshot(qmp, outdir, stem)
+                    early_screenshots.append(str(path))
+                    log(f"Early screenshot: {path.name}")
+                except Exception as exc:
+                    log(f"warning: early screenshot failed: {exc}")
+                screenshot_count += 1
+                next_screenshot = now + args.screenshot_interval
+
             if now >= next_status:
                 elapsed = int(now - started)
                 log(f"waiting for boot marker ({elapsed}s elapsed; timeout {args.timeout}s)")
@@ -354,7 +416,14 @@ def main() -> int:
             time.sleep(1.0)
 
         elapsed = time.monotonic() - started
-        if not marker_line:
+        if fail_line:
+            reason_match = re.search(r"reason=(\S+)", fail_line)
+            failure_reason = "guest reported boot failure"
+            if reason_match:
+                failure_reason += f": {reason_match.group(1)}"
+            failure_reason += f" ({fail_line})"
+            log(failure_reason)
+        elif not marker_line:
             if not failure_reason:
                 failure_reason = f"boot marker not seen within {args.timeout}s"
             log(failure_reason)
@@ -364,31 +433,40 @@ def main() -> int:
         else:
             log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
             time.sleep(8.0)
-            if qmp is None:
-                try:
-                    qmp = Qmp(qmp_socket)
-                except Exception as exc:
+
+        if qmp is None:
+            try:
+                qmp = Qmp(qmp_socket, timeout=2.0)
+            except Exception as exc:
+                if not failure_reason:
                     failure_reason = f"QMP unavailable for screenshot: {exc}"
                     log(failure_reason)
-            if qmp is not None:
-                try:
-                    qmp.command("screendump", {"filename": str(screenshot_ppm)})
-                    if not screenshot_ppm.is_file() or screenshot_ppm.stat().st_size == 0:
-                        raise RuntimeError("QMP returned no screenshot data")
-                    screenshot_result = inspect_ppm(screenshot_ppm)
-                    write_png_from_ppm(screenshot_ppm, screenshot_png)
-                    log(
-                        "Screenshot: "
-                        f"{screenshot_result['width']}x{screenshot_result['height']}, "
-                        f"non-black={screenshot_result['non_black_ratio']:.3%}, "
-                        f"colours={screenshot_result['unique_colours']}"
-                    )
-                    if not screenshot_result["meaningful"]:
-                        failure_reason = "framebuffer screenshot is blank or nearly blank"
-                        log(failure_reason)
-                except Exception as exc:
+                else:
+                    log(f"warning: QMP unavailable for final screenshot: {exc}")
+
+        if qmp is not None:
+            stem = "screenshot" if not failure_reason else "failure-screenshot"
+            try:
+                final_png, screenshot_result = capture_screenshot(
+                    qmp, outdir, stem, inspect=True
+                )
+                if screenshot_result is None:
+                    raise RuntimeError("screenshot inspection returned no data")
+                log(
+                    "Screenshot: "
+                    f"{screenshot_result['width']}x{screenshot_result['height']}, "
+                    f"non-black={screenshot_result['non_black_ratio']:.3%}, "
+                    f"colours={screenshot_result['unique_colours']}"
+                )
+                if not failure_reason and not screenshot_result["meaningful"]:
+                    failure_reason = "framebuffer screenshot is blank or nearly blank"
+                    log(failure_reason)
+            except Exception as exc:
+                if not failure_reason:
                     failure_reason = f"screenshot failed: {exc}"
                     log(failure_reason)
+                else:
+                    log(f"warning: final screenshot failed: {exc}")
     finally:
         if qmp is not None:
             try:
@@ -418,9 +496,11 @@ def main() -> int:
         "iso_sha256": sha256_file(iso),
         "duration_seconds": round(duration, 1),
         "marker": marker_line,
+        "failure_marker": fail_line,
         "failed_units": failed_units,
-        "screenshot": str(screenshot_png) if screenshot_png.is_file() else None,
+        "screenshot": str(final_png) if final_png else None,
         "screenshot_info": screenshot_result,
+        "early_screenshots": early_screenshots,
         "result": "pass" if not failure_reason else "fail",
         "failure_reason": failure_reason,
     }

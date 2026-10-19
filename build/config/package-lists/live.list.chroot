@@ -1,0 +1,14 @@
+# EclipseOS live-boot package list.
+#
+# live-build normally auto-generates this file with
+# "live-boot live-config live-config-systemd systemd-sysv" unless it already
+# exists. EclipseOS deliberately does not install live-config: hostname,
+# /etc/hosts, locale, keyboard, timezone, the live user and enabled services
+# are baked into the image at build time (docs/architecture.md). live-config
+# would overwrite those settings at boot and would recreate a default account
+# with a known password.
+#
+# This explicit, comment-only file stops `lb config` from generating the
+# default list. The packages EclipseOS actually needs are requested by
+# eclipse-base.list.chroot (live-boot, live-boot-initramfs-tools,
+# systemd-sysv).

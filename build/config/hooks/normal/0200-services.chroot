@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# EclipseOS 0200-services: enable the units the live session requires.
+#
+# `systemctl enable` only manipulates symlinks and works without a running
+# init, which is exactly the situation inside the build chroot. Nothing is
+# started here.
+set -eu
+export LC_ALL=C
+
+fail() {
+    printf '0200-services: %s\n' "$*" >&2
+    exit 1
+}
+
+SYSTEM_UNITS="
+lightdm.service
+NetworkManager.service
+systemd-timesyncd.service
+eclipseos-bootcheck.service
+"
+
+for unit in $SYSTEM_UNITS; do
+    [ -f "/usr/lib/systemd/system/$unit" ] \
+        || fail "$unit is not installed; the package list is incomplete"
+    systemctl enable "$unit" >/dev/null
+done
+
+systemctl set-default graphical.target >/dev/null
+
+for unit in $SYSTEM_UNITS; do
+    state="$(systemctl is-enabled "$unit" 2>/dev/null || true)"
+    [ "$state" = "enabled" ] || fail "$unit is not enabled (state: ${state:-unknown})"
+done
+
+[ "$(systemctl get-default)" = "graphical.target" ] \
+    || fail 'the default systemd target is not graphical.target'

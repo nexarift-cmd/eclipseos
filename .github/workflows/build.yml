@@ -1,0 +1,135 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      strict_foss:
+        description: "Also build the STRICT_FOSS=1 ISO (no non-free firmware)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: EclipseOS (${{ matrix.flavour }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        flavour: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.strict_foss && '["default","strict"]' || '["default"]') }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Free disk space
+        run: |
+          set -euo pipefail
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL \
+            /usr/local/share/boost \
+            /usr/share/swift
+          sudo apt-get clean
+          df -h /
+          df -h /dev/shm || true
+
+      - name: Enable loop devices
+        run: sudo modprobe loop || true
+
+      - name: Build and test in Debian 13
+        env:
+          FLAVOUR: ${{ matrix.flavour }}
+        run: |
+          set -Eeuo pipefail
+          EPOCH="$(git log -1 --format=%ct)"
+          STRICT="0"
+          if [ "$FLAVOUR" = "strict" ]; then STRICT="1"; fi
+          docker run --rm --privileged \
+            --name "eclipseos-build-${FLAVOUR}" \
+            -v "$PWD:/work" \
+            -w /work \
+            -e "STRICT_FOSS=${STRICT}" \
+            -e "GIT_COMMIT=${GITHUB_SHA}" \
+            -e "SOURCE_DATE_EPOCH=${EPOCH}" \
+            debian:13 bash -c '
+              set -Eeuo pipefail
+              export DEBIAN_FRONTEND=noninteractive
+
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                ca-certificates git make python3 sudo \
+                live-build debootstrap xorriso squashfs-tools mtools dosfstools \
+                cpio grub-common grub-pc-bin grub-efi-amd64-bin \
+                grub-efi-amd64-signed shim-signed isolinux syslinux-common \
+                qemu-system-x86 qemu-utils ovmf shellcheck file
+
+              echo "::group::Static checks"
+              ./scripts/static-check.sh
+              echo "::endgroup::"
+
+              echo "::group::Build"
+              set +e
+              make iso
+              build_status=$?
+              test_status=1
+              if [ "$build_status" -eq 0 ]; then
+                echo "::endgroup::"
+                echo "::group::QEMU boot tests"
+                make -k test-all
+                test_status=$?
+              fi
+              set -e
+
+              # Artifacts are uploaded by the non-root runner user.
+              chmod -R a+rX tests/out branding/assets 2>/dev/null || true
+              chmod a+r eclipseos-*.iso eclipseos-*.iso.sha256 \
+                eclipseos-*.iso.buildinfo build/*.log 2>/dev/null || true
+
+              echo "build_status=${build_status} test_status=${test_status}"
+              if [ "$build_status" -ne 0 ] || [ "$test_status" -ne 0 ]; then
+                exit 1
+              fi
+            '
+
+      - name: Upload ISO
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eclipseos-26.10-amd64-${{ matrix.flavour }}
+          path: |
+            eclipseos-*.iso
+            eclipseos-*.iso.sha256
+            eclipseos-*.iso.buildinfo
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-evidence-${{ matrix.flavour }}
+          path: |
+            tests/out/**/*.png
+            tests/out/**/*.json
+            tests/out/**/*.log
+            build/build.log
+            build/config.log
+            branding/assets/*.png
+          if-no-files-found: warn
+          retention-days: 30

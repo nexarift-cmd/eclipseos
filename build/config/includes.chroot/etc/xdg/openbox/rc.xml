@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EclipseOS openbox configuration (Phase 1 preview).
+  Original configuration, GPL-3.0-or-later.
+
+  This file is intentionally small. openbox fills every element that is not
+  listed here with its compiled-in default, so only the branding, the desktop
+  name and a few Windows-familiar shortcuts are set. Phase 2 replaces openbox
+  with Plasma and removes this file.
+-->
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <theme>
+    <name>EclipseOS</name>
+    <titleLayout>NLIMC</titleLayout>
+    <keepBorder>yes</keepBorder>
+    <animateIconify>no</animateIconify>
+    <font place="ActiveWindow">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>bold</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="InactiveWindow">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>normal</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="MenuHeader">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>bold</weight>
+      <slant>normal</slant>
+    </font>
+    <font place="MenuItem">
+      <name>Inter</name>
+      <size>10</size>
+      <weight>normal</weight>
+      <slant>normal</slant>
+    </font>
+  </theme>
+
+  <desktops>
+    <number>1</number>
+    <names>
+      <name>Desktop</name>
+    </names>
+    <firstdesk>1</firstdesk>
+    <popupTime>0</popupTime>
+  </desktops>
+
+  <focus>
+    <focusNew>yes</focusNew>
+    <followMouse>no</followMouse>
+    <focusLast>yes</focusLast>
+    <underMouse>no</underMouse>
+    <focusDelay>200</focusDelay>
+    <raiseOnFocus>no</raiseOnFocus>
+  </focus>
+
+  <placement>
+    <policy>Smart</policy>
+    <center>yes</center>
+    <monitor>Primary</monitor>
+  </placement>
+
+  <keyboard>
+    <keybind key="A-Tab">
+      <action name="NextWindow">
+        <dialog>none</dialog>
+        <finalactions>
+          <action name="Focus"/>
+          <action name="Raise"/>
+          <action name="Unshade"/>
+        </finalactions>
+      </action>
+    </keybind>
+    <keybind key="A-F4">
+      <action name="Close"/>
+    </keybind>
+    <keybind key="W-Return">
+      <action name="Execute">
+        <command>xterm</command>
+      </action>
+    </keybind>
+    <keybind key="W-d">
+      <action name="ShowDesktop"/>
+    </keybind>
+    <keybind key="W-space">
+      <action name="ShowMenu">
+        <menu>root-menu</menu>
+      </action>
+    </keybind>
+  </keyboard>
+
+  <mouse>
+    <dragThreshold>8</dragThreshold>
+    <doubleClickTime>400</doubleClickTime>
+  </mouse>
+
+  <menu>
+    <file>menu.xml</file>
+    <hide>no</hide>
+    <execute>no</execute>
+    <middle>no</middle>
+    <submenuShowDelay>100</submenuShowDelay>
+    <applicationIcons>yes</applicationIcons>
+  </menu>
+
+  <applications/>
+</openbox_config>

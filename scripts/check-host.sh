@@ -117,8 +117,8 @@ fi
 # Required build tools.
 # ---------------------------------------------------------------------------
 require_commands=(
-    git make sudo
-    lb debootstrap xorriso mksquashfs mmd mcopy
+    git make python3
+    lb debootstrap xorriso mksquashfs mmd mcopy mkfs.msdos cpio
     grub-mkrescue grub-mkstandalone
     sha256sum gzip xz apt-get dpkg-query
 )
@@ -133,6 +133,10 @@ if [[ ${#missing[@]} -eq 0 ]]; then
     ok 'All required build commands are installed'
 else
     fail "Missing build commands: ${missing[*]}"
+fi
+
+if [[ "$(id -u)" -ne 0 ]] && ! command -v sudo >/dev/null 2>&1; then
+    fail 'sudo is missing; build.sh cannot elevate for live-build'
 fi
 
 if command -v lb >/dev/null 2>&1; then
