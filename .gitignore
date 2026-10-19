@@ -1,0 +1,56 @@
+# EclipseOS build artefacts
+*.iso
+*.iso.sha256
+*.iso.buildinfo
+*.log
+*.ppm
+*.qcow2
+*.vdi
+*.vmdk
+*.ova
+
+# live-build work directories
+build/.build/
+build/binary/
+build/bootstrap/
+build/cache/
+build/chroot/
+build/config/bootstrap/
+build/config/binary
+build/config/chroot
+build/config/common
+build/config/source
+build/config/hooks/*.chroot
+build/config/includes.chroot/usr/lib/eclipseos/version
+build/config/packages.chroot/
+
+# QEMU / VirtualBox / test output
+tests/out/
+tests/work/
+screenshots/
+qemu-*.pid
+*.pid
+*.sock
+*.monitor
+
+# Local toolchains and caches
+.cache/
+.tools/
+node_modules/
+__pycache__/
+*.py[cod]
+.venv/
+CMakeFiles/
+cmake-build-*/
+build/apps/
+apps/*/build/
+*.o
+*.so
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

@@ -1,0 +1,190 @@
+# EclipseOS roadmap and acceptance gates
+
+Every phase must leave a buildable tree and a bootable ISO. A phase is not
+complete because code was written; it is complete only when its acceptance
+checks have actually run and the evidence is recorded.
+
+Current state: **Phase 0 complete. Phase 1 is blocked on access to a Linux
+build host.** See [build-environment.md](build-environment.md).
+
+## Phase 0 — Plan and repository skeleton
+
+Deliverables:
+
+- technology decisions and rationale;
+- risk register, including licensing conflicts;
+- repository skeleton;
+- build host and test strategy;
+- no false claims about a built ISO.
+
+Evidence: this repository, `docs/architecture.md`,
+`docs/build-environment.md`, `docs/licenses.md`, the Phase 0 commit and the
+Phase 0 report.
+
+Gate: user agrees on a build environment and any licence-policy exceptions.
+
+## Phase 1 — Bootable branded ISO
+
+Scope:
+
+- Debian 13 live-build baseline;
+- hybrid UEFI + BIOS ISO, VirtualBox-compatible;
+- custom GRUB theme and menu with EclipseOS branding;
+- custom Plymouth splash;
+- live user `eclipse`, no password;
+- minimal graphical environment to prove the graphical stack (openbox or a
+  small session) or a console plus framebuffer test;
+- checksum and build-info generation;
+- QEMU UEFI and BIOS smoke tests with screenshots;
+- VirtualBox EFI and BIOS manual confirmation.
+
+Acceptance:
+
+- `make iso` exits 0 on Debian 13 and writes the three expected artefacts;
+- SHA256 verifies;
+- QEMU UEFI boot reaches the boot marker within the timeout;
+- QEMU BIOS boot reaches the boot marker within the timeout;
+- screenshots show the GRUB theme and Plymouth/boot result;
+- VirtualBox EFI and BIOS both reach the live environment;
+- no build-breaking errors or missing firmware on the test hardware.
+
+Evidence: ISO name, SHA256, build log, serial logs, screenshots, test commands.
+
+## Phase 2 — Desktop experience
+
+Scope:
+
+- Plasma 6 session, Wayland default and X11 fallback;
+- Eclipse look-and-feel package, colours, decorations and fonts;
+- original wallpapers, logo/icon set;
+- centered taskbar with pinned/running apps and tray;
+- Start menu with search and power menu;
+- light/dark toggle and wallpaper picker;
+- desktop icons and context menu;
+- live autologin.
+
+Acceptance:
+
+- live ISO boots directly to the EclipseOS desktop in VirtualBox UEFI and
+  BIOS;
+- screenshots in light and dark mode at 1920x1080;
+- Start menu opens, searches, launches an app and powers off;
+- taskbar running indicators and tray controls function;
+- no Microsoft assets; licence inventory updated;
+- QEMU smoke test still passes.
+
+## Phase 3 — Installer and installed system
+
+Scope:
+
+- branded Calamares with Windows-setup-style flow;
+- language, region, keyboard, disk, account, summary, install;
+- erase disk, alongside and manual partitioning;
+- optional LUKS;
+- UEFI and BIOS bootloader installation;
+- installed system boots and logs in with the created account;
+- first-boot defaults applied.
+
+Acceptance:
+
+- install to a blank disposable virtual disk in UEFI mode;
+- install in BIOS mode;
+- install alongside a dummy/second OS partition without destroying it;
+- LUKS install unlocks and boots;
+- installed system boots with ISO detached and SDDM accepts the password;
+- screenshots of each installer step and first installed login;
+- failed install does not leave a half-configured bootloader silently.
+
+## Phase 4 — Apps, Settings, Store and Updates
+
+Scope:
+
+- Eclipse Settings with all required pages;
+- Dolphin preconfigured/rebranded as Eclipse Files (sidebar, tabs, preview);
+- Eclipse Store (Discover rebrand) with APT and Flatpak;
+- Eclipse Update with APT/PolicyKit UI;
+- app suite: terminal, editor, image viewer, media player, calculator,
+  screenshots, browser;
+- Flatpak configuration, offline error states.
+
+Acceptance:
+
+- each Settings page opens and reports unavailable hardware honestly;
+- network, display, sound, theme, update and About actions tested;
+- Dolphin tabs/sidebar/preview demonstrated;
+- update check and install tested against a disposable package;
+- store opens and lists packages; no unsigned repositories added;
+- app suite launches and is themed;
+- screenshots and functional notes.
+
+## Phase 5 — Shell polish and performance
+
+Scope:
+
+- snap layout picker (halves, quarters, thirds) and window animations;
+- virtual desktops / Task View;
+- Alt+Tab switch experience;
+- widgets panel (weather, clock, calendar);
+- global search polish;
+- lock screen;
+- quick settings and notification centre;
+- performance tuning and graceful software-rendering fallbacks.
+
+Acceptance:
+
+- snap layouts work with pointer and keyboard on Wayland and X11 fallback;
+- animations do not block input or leave windows off-screen;
+- widgets degrade offline without errors;
+- lock screen locks/unlocks under both sessions;
+- cold boot to desktop within a measured budget on 4 GB / 2 vCPU VM;
+- QEMU and VirtualBox screenshots of all major surfaces;
+- no regression in prior phase tests.
+
+## Phase 6 — Hardware hardening and release candidate
+
+Scope:
+
+- firmware and driver audit (Wi-Fi, Ethernet, graphics, audio, storage,
+  suspend/resume, webcam, printer, Bluetooth);
+- Secure Boot validation and MOK flow;
+- UEFI/BIOS real-hardware tests;
+- dual-boot preservation review;
+- performance/memory tuning;
+- accessibility and keyboard-only pass;
+- final licence inventory;
+- `eclipse-26.10-rc1` build and SHA256;
+- real-hardware guide and known-issues matrix.
+
+Acceptance:
+
+- at least the documented minimum hardware matrix passes or is explicitly
+  listed as unsupported;
+- installer runs on UEFI and BIOS real hardware without data loss in the
+  tested scenarios;
+- Secure Boot documented and tested, or clearly marked disabled for RC;
+- no secrets, telemetry or unreviewed proprietary components;
+- release notes list every known issue and difference from upstream.
+
+## Stretch — `experimental/kernel`
+
+A separate educational hobby kernel under `experimental/kernel/`:
+
+- x86_64 UEFI application built with C or Rust;
+- no dependency on the Debian ISO build;
+- obtains a framebuffer via GOP;
+- prints `Hello from EclipseOS kernel`;
+- boots in QEMU with OVMF;
+- clear docs that it is not the EclipseOS product kernel.
+
+It must never replace or block the main OS build.
+
+## Cross-phase quality gates
+
+- `make doctor` passes on the documented build host.
+- `make iso` produces a hybrid ISO and checksum.
+- QEMU UEFI and BIOS smoke tests pass.
+- Checked-in scripts pass shell lint/static checks.
+- New upstream components are added to `docs/licenses.md`.
+- Every destructive installer path has a warning and test evidence.
+- No claim of success precedes actual execution.
+- Build output is deterministic where verified; otherwise described honestly.
