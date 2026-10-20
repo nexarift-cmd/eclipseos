@@ -74,9 +74,13 @@ jobs:
               apt-get install -y --no-install-recommends \
                 ca-certificates git make python3 sudo \
                 live-build debootstrap xorriso squashfs-tools mtools dosfstools \
-                cpio grub-common grub-pc-bin grub-efi-amd64-bin \
+                cpio xz-utils grub-common grub-pc-bin grub-efi-amd64-bin \
                 grub-efi-amd64-signed shim-signed isolinux syslinux-common \
-                qemu-system-x86 qemu-utils ovmf shellcheck file
+                qemu-system-x86 qemu-utils ovmf shellcheck file desktop-file-utils
+
+              echo "::group::Host check"
+              make doctor
+              echo "::endgroup::"
 
               echo "::group::Static checks"
               ./scripts/static-check.sh

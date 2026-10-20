@@ -46,8 +46,11 @@ It:
 - runs `scripts/static-check.sh` (shell lint, Python/JSON syntax, desktop
   entry);
 - starts `debian:13` with `--privileged` and the workspace bind-mounted;
-- installs `live-build`, GRUB, xorriso, squashfs tools, QEMU and OVMF inside
-  the container;
+- installs `live-build`, GRUB, xorriso, squashfs tools, xz-utils, QEMU, OVMF
+  and the static-check tools (`shellcheck`, `file`, `desktop-file-utils`)
+  inside the container;
+- runs `make doctor` (including the QEMU/OVMF checks) before starting the
+  build, so a missing host tool fails immediately;
 - runs `make iso`;
 - runs `make -k test-all` for UEFI (OVMF) and BIOS (SeaBIOS);
 - uploads `eclipseos-*.iso`, `*.sha256`, `*.buildinfo`, `build.log`, serial
@@ -63,9 +66,11 @@ Requirements:
 - no KVM on standard runners, so boot tests use QEMU TCG and are slow;
 - a successful workflow run before any Phase 1 acceptance claim.
 
-**The workflow has not run yet.** It needs the repository to be pushed and a
-GitHub Actions run to be triggered. A local build with the same Makefile
-remains possible.
+**Workflow status:** the first run reached the Debian container host check but
+failed because `xz-utils` was missing. The workflow, this document and the
+README now include it, and CI runs `make doctor` before the build. A successful
+workflow run is still required before Phase 1 acceptance. A local build with
+the same Makefile remains possible.
 
 ## Option B: dedicated Debian 13 build VM or machine
 
@@ -89,10 +94,42 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   ca-certificates curl git make sudo \
   live-build debootstrap xorriso squashfs-tools mtools dosfstools cpio \
-  grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
+  xz-utils grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
   isolinux syslinux-common \
-  qemu-system-x86 qemu-utils ovmf python3
+  qemu-system-x86 qemu-utils ovmf python3 \
+  shellcheck file desktop-file-utils
 ```
+
+### Host tool coverage
+
+`make doctor` runs `scripts/check-host.sh --with-tests` and verifies every
+command used by the build and the QEMU tests. `make static-check` additionally
+uses `shellcheck`, `file` and `desktop-file-validate` when present. The
+commands most often missed map to these Debian packages:
+
+| Command or file | Debian package |
+| --- | --- |
+| `lb` | `live-build` |
+| `debootstrap` | `debootstrap` |
+| `xorriso` | `xorriso` |
+| `mksquashfs` | `squashfs-tools` |
+| `mmd`, `mcopy` | `mtools` |
+| `mkfs.msdos` | `dosfstools` |
+| `cpio` | `cpio` |
+| `xz` | `xz-utils` |
+| `grub-mkrescue`, `grub-mkstandalone` | `grub-common` |
+| BIOS GRUB modules | `grub-pc-bin` |
+| UEFI GRUB modules | `grub-efi-amd64-bin` |
+| `qemu-system-x86_64` | `qemu-system-x86` |
+| `qemu-img` | `qemu-utils` |
+| OVMF firmware | `ovmf` |
+| `desktop-file-validate` | `desktop-file-utils` (static check) |
+
+`zstd` is not a host build dependency for this configuration: the squashfs
+filesystem uses xz and the initramfs uses gzip. The image package list installs
+`zstd` inside the live system for kernel/initramfs use. `desktop-file-validate`
+is optional for a local build (the static check skips it if absent); CI installs
+it so the session desktop entry is always validated.
 
 Check:
 

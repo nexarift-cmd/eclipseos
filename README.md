@@ -121,9 +121,10 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
   ca-certificates curl git make sudo \
   live-build debootstrap xorriso squashfs-tools mtools dosfstools cpio \
-  grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
+  xz-utils grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
   isolinux syslinux-common \
-  qemu-system-x86 qemu-utils ovmf python3
+  qemu-system-x86 qemu-utils ovmf python3 \
+  shellcheck file desktop-file-utils
 ```
 
 `make doctor` checks that the needed tools are present. Full instructions,
@@ -175,7 +176,9 @@ a privileged Debian 13 container on `ubuntu-24.04`, runs the static checks,
 boots the image in QEMU with OVMF (UEFI) and SeaBIOS, and uploads the ISO,
 checksum, build info, serial logs and screenshots as artifacts. A manual
 `workflow_dispatch` run can build both the default and `STRICT_FOSS=1`
-flavours. The workflow has not run yet; it needs a pushed GitHub repository.
+flavours. The first run reached the container host check but failed because
+`xz-utils` was missing; the dependency lists now include it and CI runs
+`make doctor` first. A successful run is still required.
 
 VirtualBox is a manual acceptance environment, not a CI virtualiser. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before

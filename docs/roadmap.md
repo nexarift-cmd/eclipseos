@@ -5,8 +5,9 @@ complete because code was written; it is complete only when its acceptance
 checks have actually run and the evidence is recorded.
 
 Current state: **Phase 0 complete. Phase 1 is implemented and passing local
-static checks, but no ISO has been built or booted.** Acceptance is blocked on
-access to a Linux build host or a GitHub Actions run. See
+static checks, but no ISO has been built or booted.** The first GitHub Actions
+run executed in Debian 13 and stopped at the host check because `xz-utils` was
+missing; that dependency is fixed and a rerun is pending. See
 [build-environment.md](build-environment.md).
 
 ## Phase 0 — Plan and repository skeleton
@@ -62,7 +63,7 @@ Evidence: ISO name, SHA256, build log, serial logs, screenshots, test commands.
 | `make iso` / SHA256 / build-info | Implemented; no ISO produced |
 | QEMU UEFI and BIOS boot tests | Implemented; not yet run against an ISO |
 | VirtualBox EFI and BIOS boot | Not run; see [virtualbox-limitations.md](virtualbox-limitations.md) |
-| GitHub Actions build | Workflow written; requires a pushed repository and a workflow run |
+| GitHub Actions build | First run executed; stopped at host check because `xz-utils` was missing. Fixed; rerun pending. |
 
 Static checks alone are not acceptance. The Phase 1 gate remains open until
 every item under "Acceptance" above has a real result.
