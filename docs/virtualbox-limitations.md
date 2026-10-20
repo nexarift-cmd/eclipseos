@@ -9,14 +9,14 @@ and the ISO does not pretend otherwise.
 
 | Capability | Status in the EclipseOS ISO | Notes |
 | --- | --- | --- |
-| Boot in VirtualBox UEFI and BIOS | Expected | Automated CI uses QEMU; VirtualBox acceptance is manual and not yet recorded. |
+| Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. The 4096 MiB target could not start on the 5.1 GB test host. |
 | Graphics controller | VMSVGA | Selected by `scripts/create-vbox-vm.sh`; 128 MiB video RAM. |
-| Basic desktop rendering | Expected via the in-kernel `vmwgfx` driver and Mesa | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
+| Basic desktop rendering | Verified at 2048 MiB via X11/openbox | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
 | Automatic guest resolution / window resize | **Not available** | Requires Guest Additions. Set a mode manually with `xrandr` if the virtual monitor exposes one. |
 | Seamless mouse integration | **Not available** | The guest uses a relative pointer. Use VirtualBox's host key to release the pointer. |
 | Shared clipboard | **Not available** | No Guest Additions. Clipboard settings in the VM do nothing useful. |
 | Shared folders | **Not available** | No Guest Additions. |
-| 3D acceleration | Unverified | The VM enables VirtualBox's 3D option, but EclipseOS has not been tested with it. If rendering fails, turn 3D off and use the X11 session. |
+| 3D acceleration | Enabled in the 2 GiB tests; performance unverified | The desktop rendered with the option enabled. If rendering fails, turn 3D off and use the X11 session. |
 | USB 3.0 / xHCI | Not enabled by the VM script | The VirtualBox Extension Pack is not distributed with EclipseOS. |
 | Secure Boot | **Not tested** | Test with Secure Boot disabled until the signed-boot path is verified in Phase 6. |
 | Audio | Expected | Intel HDA emulation. No Guest Additions required. |
@@ -87,11 +87,20 @@ yourself, enable those features in VirtualBox afterwards.
 
 ## Acceptance status
 
-No VirtualBox boot has been recorded yet. The Phase 1 acceptance gate requires
-a manual UEFI and BIOS boot in VirtualBox; until those runs exist, this page
-describes expected behaviour, not a passed test. The QEMU tests exercise the
-same ISO but use a different virtual graphics adapter (`-vga std`) and cannot
-prove VirtualBox-specific behaviour.
+VirtualBox 7.2.20 booted the ISO in EFI and BIOS modes on 2026-10-20. Both
+sessions reached the live X11 desktop, with the GRUB menu and desktop captured
+in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2 vCPUs,
+128 MiB VMSVGA video and a 25 GiB disk, but **2048 MiB RAM instead of the
+script's 4096 MiB**, because this 5.1 GB host cannot allocate the 4 GiB guest.
+The exact failure is in
+[`evidence/phase1/virtualbox-host-limit.txt`](evidence/phase1/virtualbox-host-limit.txt).
+The 4096 MiB configuration still needs a host with enough RAM and working
+hardware virtualisation, or real hardware.
+
+The BIOS run's 30-second screenshot showed `vmwgfx` warnings while VirtualBox
+was using its Hyper-V/NEM fallback; the desktop was present at 60 seconds.
+QEMU uses `-vga std`, so it cannot prove VirtualBox graphics behaviour. This
+is recorded as a host-specific observation, not a passed performance test.
 
 ## Future work
 

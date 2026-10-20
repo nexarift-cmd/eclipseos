@@ -4,34 +4,36 @@ EclipseOS is built with Debian `live-build`. That tool chain needs a Linux
 kernel, loop devices and privileged chroot operations. It cannot run in this
 Windows sandbox, and a Windows-only build is not supported.
 
-## Current sandbox: why Phase 1 cannot run here
+## Current sandbox: CI build, limited local VirtualBox QA
 
-The Phase 0 environment check found:
+The build runs in GitHub Actions; this Windows sandbox is a test client, not a
+Debian build host. Its current limits are:
 
 | Resource | Result |
 | --- | --- |
 | OS | Windows 11 Pro 10.0.26100, x86_64 |
 | CPU | AMD Ryzen 3 2200U, 2 cores / 4 threads |
-| RAM | 5.0 GB total, < 0.5 GB free at inspection |
-| Free disk on C: | 17.8 GB |
+| RAM | 5.1 GB total, < 0.5 GB free at inspection |
+| Free disk on C: | About 10 GB after downloading the ISO and test evidence |
 | Linux environment | No WSL distribution; WSL feature not installed |
 | Containers | No Docker/Podman |
-| VirtualBox | Not installed |
+| VirtualBox | Installed, 7.2.20; EFI and BIOS 2 GiB test VMs ran |
 | QEMU / xorriso / live-build | Not installed |
-| Administrative rights | No |
 | Network | Available (Debian/GitHub endpoints reachable) |
 
 Consequences:
 
-- no ISO can be built in this session;
-- no VirtualBox or QEMU boot screenshots can be captured;
-- Calamares, Plasma and firmware behaviour cannot be tested here;
-- attempting a QEMU-in-QEMU Debian builder would exceed the available disk and
-  RAM with a full KDE image, and would still need hours of software emulation.
+- the ISO is built by CI, not in this session;
+- VirtualBox EFI and BIOS boots were verified locally at 2048 MiB;
+- the script's 4096 MiB VM cannot start here: the guest RAM allocation fails
+  on a 5.1 GB host with no hardware-virtualisation passthrough. The exact error
+  is recorded in
+  [`evidence/phase1/virtualbox-host-limit.txt`](evidence/phase1/virtualbox-host-limit.txt);
+- QEMU boot tests run in CI with KVM when the runner exposes it, otherwise TCG;
+- Calamares, Plasma and real-hardware behaviour still need suitable hosts.
 
-The repository is therefore being prepared so it can be built on a proper
-host without redesign. **Do not interpret generated source files as a tested
-ISO.**
+**Do not interpret generated source files as a tested ISO.** The tested image
+and its logs are recorded in [`evidence/phase1`](evidence/phase1/README.md).
 
 ## Option A (recommended): GitHub Actions
 
@@ -61,16 +63,19 @@ It:
 Requirements:
 
 - a public repository, or Actions budget for a private repository;
-- 30–60 minutes of CI time per build, depending on runner speed and TCG;
-- artifact storage for the ISO (several GB);
-- no KVM on standard runners, so boot tests use QEMU TCG and are slow;
+- about 10–20 minutes of CI time per build; run #3 took about 8 minutes;
+- artifact storage for the ISO (about 900 MiB compressed artifact);
+- KVM when the runner exposes it, with QEMU TCG fallback when it does not;
 - a successful workflow run before any Phase 1 acceptance claim.
 
-**Workflow status:** the first run reached the Debian container host check but
-failed because `xz-utils` was missing. The workflow, this document and the
-README now include it, and CI runs `make doctor` before the build. A successful
-workflow run is still required before Phase 1 acceptance. A local build with
-the same Makefile remains possible.
+**Workflow status:** run #3 completed successfully on commit `c874d77`. It
+passed the host check and static checks, built the default ISO, ran the QEMU
+UEFI and BIOS tests (KVM, 22.1 s to the marker in each), and uploaded the ISO
+and test evidence. Run #4 then built both flavours from the same commit: its
+default job reproduced the same SHA256, and its strict job built a main-only
+ISO with `0300-licences: 0 approved non-free-firmware package(s)` and two
+passing QEMU boots. The exact results are in
+[`evidence/phase1`](evidence/phase1/README.md).
 
 ## Option B: dedicated Debian 13 build VM or machine
 
@@ -233,7 +238,10 @@ host, so treat this as a build path, not a substitute for hardware testing.
 
 ## Disk usage expectations
 
-Approximate, to be measured in Phase 1:
+Measured in Phase 1: the minimal ISO is **890 MiB** and the published artifact
+is about 933 MB. The CI runner frees its own disk before building; the exact
+peak chroot usage was not recorded. The following are estimates for the full
+KDE image:
 
 - Debian base + chroot: 2–4 GB
 - KDE, apps, installer and themes: another 3–5 GB
@@ -242,5 +250,4 @@ Approximate, to be measured in Phase 1:
 - caches and logs: 2–5 GB
 
 Plan for **40 GB free minimum**, and 60 GB for comfortable iteration. The
-current 17.8 GB sandbox cannot reliably hold a full KDE build plus ISO plus
-test disk.
+current sandbox has about 10 GB free and is not a build host.

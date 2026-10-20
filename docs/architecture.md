@@ -1,9 +1,13 @@
 # EclipseOS architecture
 
-Status: **Phase 1 implementation.** This document describes the target
-product and its Phase 1 subset. Phase 1 uses LightDM + openbox + xterm/feh
-instead of Plasma + SDDM; Phase 2 replaces the session. No ISO has been built
-or booted yet, and this document is not evidence that the system works. See
+Status: **Phase 1 default image built and boot-tested.** This document
+describes the target product and its Phase 1 subset. Phase 1 uses LightDM +
+openbox + xterm/feh instead of Plasma + SDDM; Phase 2 replaces the session.
+The default ISO booted in QEMU UEFI/BIOS and in VirtualBox EFI/BIOS at
+2048 MiB; a strict main-only image also passed both QEMU boots with zero
+non-free firmware packages. The 4096 MiB VirtualBox target is still open.
+This document is design and policy, not boot evidence; see
+[`evidence/phase1`](evidence/phase1/README.md) and
 [build-environment.md](build-environment.md).
 
 ## 1. Scope and honest boundaries
@@ -344,9 +348,11 @@ requirement is unmet. See
 [`virtualbox-limitations.md`](virtualbox-limitations.md) for the full matrix
 and workarounds.
 
-The VirtualBox acceptance boot has not been recorded. QEMU tests are the CI
-gate; they use `-vga std`, so they cannot prove VirtualBox-specific
-behaviour.
+The VirtualBox acceptance boot is recorded at 2048 MiB: EFI and BIOS both
+reached the live X11 desktop. The 4096 MiB VM could not start on the 5.1 GB
+test host, so it remains unverified. QEMU tests are the CI gate; they use
+`-vga std`, so they cannot prove VirtualBox-specific behaviour. See
+[`evidence/phase1`](evidence/phase1/README.md).
 
 ## 11. Build and test architecture
 
@@ -382,7 +388,7 @@ required CI virtualiser.
 
 | ID | Risk | Likelihood | Impact | Mitigation / decision |
 | --- | --- | --- | --- | --- |
-| R0 | Current sandbox cannot run Linux or virtualisation, so nothing can be built or boot-tested here | Certain | Critical | Build on a Debian 13 host or GitHub Actions. Phase 1 is implemented and statically checked, but acceptance stays open until an ISO boots. No false completion claims. |
+| R0 | Current sandbox cannot run a Linux build or a 4 GiB VirtualBox guest | Certain | High | Build in GitHub Actions; Phase 1 default and strict ISOs and QEMU boot tests passed. VirtualBox EFI/BIOS passed at 2 GiB. Only the exact 4 GiB target remains unverified. No false completion claims. |
 | R1 | Oracle Guest Additions are non-free; Debian 13 stable lacks Guest Utilities | High | High | Not bundled. VMSVGA + open-source `vmwgfx`/Mesa is used; clipboard/resize/shared folders are documented as unavailable in [`virtualbox-limitations.md`](virtualbox-limitations.md). Requirement explicitly unmet. |
 | R2 | "Open-source only" conflicts with firmware and NVIDIA requirements | Certain | Medium | Default: redistributable non-free firmware in the image for hardware support; NVIDIA driver is opt-in during install; no Oracle PUEL components. Document every exception. |
 | R3 | Wayland/Plasma fails under VirtualBox or software rendering | Medium | High | X11 fallback session; VMSVGA; boot marker checks both sessions; CI uses QEMU without GL acceleration. |
@@ -415,9 +421,13 @@ Phase 0 exit criteria — met:
 - Risks and licence conflicts recorded.
 - Repository skeleton and build entry points created.
 
-Phase 1 — implemented, not accepted:
+Phase 1 — default path verified, gate not fully closed:
 
 - live-build tree, package lists, hooks, branding and QEMU test driver exist;
-- local static checks pass;
-- **no ISO has been built, no QEMU or VirtualBox boot has run, and no
-  screenshot exists.** Acceptance remains open until those results exist.
+- static checks and host preflight pass;
+- run #3 built the default ISO; SHA256 verifies; QEMU UEFI and BIOS both pass;
+- run #4 built the strict main-only ISO with zero non-free firmware packages;
+  both QEMU boots pass;
+- VirtualBox EFI and BIOS both reached the desktop at 2048 MiB;
+- open: the exact 4096 MiB VirtualBox VM (blocked by the 5.1 GB test host);
+- evidence: [`evidence/phase1`](evidence/phase1/README.md).

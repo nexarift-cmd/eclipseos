@@ -38,6 +38,10 @@ build/config/includes.chroot/usr/share/plymouth/themes/eclipseos/eclipseos-progr
 build/config/bootloaders/grub-pc/splash.png
 build/config/bootloaders/grub-pc/unicode.pf2
 
+# Phase acceptance evidence is intentionally tracked, including logs,
+# checksums and build-info files.
+!docs/evidence/**
+
 # QEMU / VirtualBox / test output
 tests/out/
 tests/work/

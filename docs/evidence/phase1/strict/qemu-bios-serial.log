@@ -1,0 +1,4 @@
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0
+[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
+EclipseOS 26.10 eclipseos ttyS0
+eclipseos login: 

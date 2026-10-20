@@ -16,9 +16,12 @@ Current tests:
 - `installer/` — disposable virtual-disk installation tests, added in Phase 3.
 - `screenshots/` — generated captures, never edited to hide failures.
 
-The boot marker is emitted by the Phase 1 `eclipseos-bootcheck` service. **The
-QEMU test has not been run against a built ISO yet**; syntax and marker-contract
-review are not a substitute for a boot test.
+The boot marker is emitted by the Phase 1 `eclipseos-bootcheck` service. The
+test ran against the built default ISO in GitHub Actions run #3: UEFI and BIOS
+both reported the marker after 22.1 s with `failed_units=0`, and both result
+files report `"result": "pass"`. The strict ISO also passed both tests in run
+#4 at 24.2 s. Evidence is in
+[`../docs/evidence/phase1`](../docs/evidence/phase1/README.md).
 
 ### Serial marker contract
 

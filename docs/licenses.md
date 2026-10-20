@@ -1,10 +1,12 @@
 # EclipseOS licensing and component inventory
 
-Status: **Phase 1 implementation.** This document records the policy, the
-components selected for the Phase 1 live image, and every non-free exception.
-The package manifest is generated at build time; no ISO has been built or
-booted yet, so the package list below is the planned/selected set, not a
-scraped list from an image.
+Status: **Phase 1.** This document records the policy, the components selected
+for the Phase 1 live image, and every non-free exception. The default ISO has
+been built and boot-tested; its build log reports 24 approved
+`non-free-firmware` packages. The package manifest is generated inside the
+image at build time. The strict `STRICT_FOSS=1` image was also built: it used
+the `main` archive only, reported zero non-free firmware packages, and passed
+both QEMU boots.
 
 ## Project licence
 
@@ -174,9 +176,13 @@ It fails the build if:
 
 `build/config/hooks/normal/9900-verify.chroot` then asserts that the files,
 branding assets, live account policy and enabled units are present. Both hooks
-run inside the chroot before the squashfs is created. The manifest generation
-has **not yet run against a built ISO**; it is part of the Phase 1
-implementation awaiting a Linux build/CI run.
+run inside the chroot before the squashfs is created. The default Phase 1
+build ran both hooks successfully: `0300-licences` reported 24 approved
+packages and `9900-verify` reported all checks passed. The strict build
+reported `0300-licences: 0 approved non-free-firmware package(s)` and also
+passed `9900-verify`. The actual manifest is inside each image; strict
+evidence is in
+[`evidence/phase1/strict`](evidence/phase1/strict/README.md).
 
 The build also stages this document and the project licence into the image:
 

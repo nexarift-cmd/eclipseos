@@ -1,0 +1,26 @@
+{
+    "firmware":  "efi",
+    "name":  "EclipseOS-Phase1-EFI-2GB",
+    "started_utc":  "2026-10-20T02:52:44.7035081Z",
+    "elapsed_seconds":  197.9,
+    "screenshots":  [
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-01-010s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-02-020s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-03-030s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-04-040s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-05-050s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-06-060s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-07-070s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-08-080s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-09-090s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-10-100s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-11-110s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-12-120s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-13-130s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-14-140s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-15-150s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-16-160s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-17-170s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-efi\\shot-18-180s.png"
+                    ]
+}

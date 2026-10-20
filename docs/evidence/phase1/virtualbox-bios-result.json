@@ -1,0 +1,26 @@
+{
+    "firmware":  "bios",
+    "name":  "EclipseOS-Phase1-BIOS-2GB",
+    "started_utc":  "2026-10-20T02:56:26.3079592Z",
+    "elapsed_seconds":  198.1,
+    "screenshots":  [
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-01-010s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-02-020s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-03-030s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-04-040s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-05-050s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-06-060s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-07-070s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-08-080s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-09-090s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-10-100s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-11-110s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-12-120s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-13-130s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-14-140s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-15-150s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-16-160s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-17-170s.png",
+                        "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\eclipseos-vbox-bios\\shot-18-180s.png"
+                    ]
+}

@@ -1,0 +1,23 @@
+Strict CI build summary
+=======================
+
+Selected timestamps and lines from GitHub Actions run 39362243286, job
+"EclipseOS (strict)", step "Build and test in Debian 13". The full run log is
+available from the run page. Times are UTC.
+
+2026-10-20T03:05:34.3817275Z Host check passed with 0 warning(s).
+2026-10-20T03:05:35.1083718Z Static checks passed.
+2026-10-20T03:05:46.0337208Z Firmware list: disabled (STRICT_FOSS=1)
+2026-10-20T03:05:46.0636533Z [2026-10-20 03:05:46] lb config noauto --mode debian --architecture amd64 --distribution trixie --parent-distribution trixie --archive-areas main --parent-archive-areas main --binary-images iso-hybrid --bootloaders grub-pc,grub-efi --uefi-secure-boot auto --debian-installer none --memtest none --initramfs live-boot --initsystem systemd --firmware-chroot false --firmware-binary false --linux-flavours amd64 --linux-packages linux-image --chroot-filesystem squashfs --security true --updates true --proposed-updates false --apt-indices false --apt-recommends false --cache false --checksums sha256 --iso-application EclipseOS 26.10 --iso-preparer EclipseOS build system --iso-publisher EclipseOS project --iso-volume ECLIPSEOS_2610 --bootappend-live boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8 --bootappend-live-failsafe boot=live nosplash noapic noapm nodma nomce nosmp console=tty0 console=ttyS0,115200n8
+2026-10-20T03:07:35.3580462Z P: Executing hook config/hooks/normal/0300-licences.chroot...
+2026-10-20T03:07:35.4674295Z 0300-licences: 0 approved non-free-firmware package(s)
+2026-10-20T03:07:35.8495091Z P: Executing hook config/hooks/normal/9900-verify.chroot...
+2026-10-20T03:07:35.8888490Z 9900-verify: all Phase 1 checks passed
+2026-10-20T03:10:58.0009025Z Built: /work/eclipseos-26.10-amd64.iso
+2026-10-20T03:10:58.3537783Z SHA256: 67eff472ca704d5ed72ce6119eda71303470eeb25bd142f129eb555bd01f1edd
+2026-10-20T03:10:58.3538568Z Build info: /work/eclipseos-26.10-amd64.iso.buildinfo
+2026-10-20T03:11:22.9153883Z [test] Boot marker seen after 24.2s: ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0
+2026-10-20T03:11:31.4063786Z [test] PASS
+2026-10-20T03:11:55.9752670Z [test] Boot marker seen after 24.2s: ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0
+2026-10-20T03:12:04.4692930Z [test] PASS
+2026-10-20T03:12:04.4792795Z build_status=0 test_status=0

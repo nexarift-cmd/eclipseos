@@ -13,21 +13,23 @@ update experience. The upstream components are credited in
 
 ## Project status
 
-> **Built and tested:** no ISO has been built or booted yet. Phase 0
-> (planning and scaffolding) is complete. Phase 1 (minimal branded live ISO)
-> is implemented and passes local static checks, but it cannot be accepted
-> until a Debian 13 build host or the GitHub Actions workflow produces an ISO
-> and the QEMU/VirtualBox boot tests pass. The current sandbox is a Windows
-> host with no Linux build environment, no VirtualBox/QEMU, 5 GB of RAM and
-> 17.8 GB of free disk. See
-> [`docs/build-environment.md`](docs/build-environment.md). Do not treat any
-> phase as "working" until its acceptance tests have run on a suitable build
-> host.
+> **Default and strict ISOs built and boot-tested:** GitHub Actions
+> [run #3](https://github.com/nexarift-cmd/eclipseos/actions/runs/39359532446)
+> produced the default `eclipseos-26.10-amd64.iso`
+> (SHA256 `f8bbf22a9354b2d9c3524ef11a3de59040a70d35011bc617d235ffa47eb4ac4a`).
+> QEMU UEFI and BIOS both passed, and VirtualBox EFI and BIOS both reached the
+> live desktop. The VirtualBox runs used 2048 MiB because this 5 GB Windows
+> host cannot start the script's 4096 MiB target. [Run
+> #4](https://github.com/nexarift-cmd/eclipseos/actions/runs/39362243286) also
+> built the strict `STRICT_FOSS=1` image from `main` only with zero non-free
+> firmware packages; both QEMU boots passed. See
+> [`docs/evidence/phase1`](docs/evidence/phase1/README.md). Phase 2 has not
+> started.
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
-| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Implemented; build and boot verification pending |
+| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Default and strict ISOs built; QEMU boot pass for both, VirtualBox EFI/BIOS pass for default; 4096 MiB VM pending |
 | 2 | Plasma desktop, taskbar, Start menu, themes | Not started |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
@@ -176,11 +178,22 @@ a privileged Debian 13 container on `ubuntu-24.04`, runs the static checks,
 boots the image in QEMU with OVMF (UEFI) and SeaBIOS, and uploads the ISO,
 checksum, build info, serial logs and screenshots as artifacts. A manual
 `workflow_dispatch` run can build both the default and `STRICT_FOSS=1`
-flavours. The first run reached the container host check but failed because
-`xz-utils` was missing; the dependency lists now include it and CI runs
-`make doctor` first. A successful run is still required.
+flavours.
 
-VirtualBox is a manual acceptance environment, not a CI virtualiser. Read
+[Run #3](https://github.com/nexarift-cmd/eclipseos/actions/runs/39359532446)
+(commit `c874d77`) succeeded end to end. It built the 890 MiB default ISO,
+verified the SHA256 file, reached the desktop marker in both QEMU firmware
+modes, and published `eclipseos-26.10-amd64-default` plus
+`test-evidence-default`.
+
+[Run #4](https://github.com/nexarift-cmd/eclipseos/actions/runs/39362243286)
+was a `workflow_dispatch` run of the same commit. Its default job reproduced
+the same SHA256; its strict job built a 464 MiB main-only ISO with
+`0300-licences: 0 approved non-free-firmware package(s)`, and both QEMU boots
+passed. The exact checksums, logs and screenshots are in
+[`docs/evidence/phase1`](docs/evidence/phase1/README.md). VirtualBox remains a
+manual acceptance environment, not a CI virtualiser; the EFI/BIOS result at
+2048 MiB is recorded in the evidence directory. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
 

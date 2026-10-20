@@ -1,0 +1,32 @@
+VirtualBox 4 GiB host limitation on the Phase 1 test machine
+=============================================================
+
+Date: 2026-10-20 (UTC)
+VirtualBox: 7.2.20 r175154
+Host: Windows 11 Pro 10.0.26100, AMD Ryzen 3 2200U
+Visible RAM: 5069 MB total, 399 MB available at launch
+Core Isolation (Memory Integrity): enabled
+Hyper-V present: yes; VirtualBox used its NEM path
+
+The script's target configuration (4096 MiB guest RAM, 2 vCPU, 128 MiB
+VRAM, VMSVGA, EFI) was created, but VirtualBox failed before the guest
+started:
+
+    00:00:04.739077 NEM: NEMR3Init: Snail execution mode is active!
+    00:00:04.740014 CPUM: No hardware-virtualization capability detected
+    00:00:05.967206 Unhandled error 1455
+    00:00:05.972701 pgmR3PhysInitAndLinkRamRange failed:
+        GCPhysChunk=0000000000200000 cPagesInChunk=0xdfe00
+        (Extended RAM, >2MB): VERR_UNRESOLVED_ERROR
+    00:00:06.156239 VMSetError: Unresolved (unknown) host platform error.
+    00:00:06.668520 Power up failed (vrc=VERR_UNRESOLVED_ERROR,
+        hrc=E_FAIL (0X80004005))
+
+This is a host capacity/virtualisation limitation, not an EclipseOS boot
+failure: the same ISO booted in QEMU UEFI and BIOS, and the same VirtualBox
+configuration with 2048 MiB booted to the live desktop in both EFI and BIOS
+modes. See README.md in this directory.
+
+The 4096 MiB target must be retested on a host with enough free RAM and
+working hardware virtualisation (or on real hardware) before the exact VM
+script configuration is claimed as tested.

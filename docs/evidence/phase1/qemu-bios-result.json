@@ -1,0 +1,24 @@
+{
+  "timestamp_utc": "2026-10-20T02:41:06+00:00",
+  "firmware": "bios",
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "f8bbf22a9354b2d9c3524ef11a3de59040a70d35011bc617d235ffa47eb4ac4a",
+  "duration_seconds": 30.2,
+  "marker": "ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261020T024035Z-bios/screenshot.png",
+  "screenshot_info": {
+    "width": 1280,
+    "height": 800,
+    "sampled_pixels": 102400,
+    "non_black_ratio": 0.260996,
+    "unique_colours": 795,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261020T024035Z-bios/boot-01-0008s.png"
+  ],
+  "result": "pass",
+  "failure_reason": ""
+}

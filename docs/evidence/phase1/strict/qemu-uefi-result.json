@@ -1,0 +1,24 @@
+{
+  "timestamp_utc": "2026-10-20T03:11:31+00:00",
+  "firmware": "uefi",
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "67eff472ca704d5ed72ce6119eda71303470eeb25bd142f129eb555bd01f1edd",
+  "duration_seconds": 32.3,
+  "marker": "ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261020T031058Z-uefi/screenshot.png",
+  "screenshot_info": {
+    "width": 1280,
+    "height": 800,
+    "sampled_pixels": 102400,
+    "non_black_ratio": 0.260713,
+    "unique_colours": 795,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261020T031058Z-uefi/boot-01-0008s.png"
+  ],
+  "result": "pass",
+  "failure_reason": ""
+}
