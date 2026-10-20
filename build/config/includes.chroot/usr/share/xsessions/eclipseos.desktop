@@ -5,4 +5,3 @@ Exec=/usr/local/bin/eclipseos-session
 TryExec=/usr/local/bin/eclipseos-session
 Icon=eclipseos
 Type=Application
-DesktopNames=EclipseOS
