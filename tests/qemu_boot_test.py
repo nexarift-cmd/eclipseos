@@ -286,6 +286,7 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
         command += ["-boot", "order=d,menu=off"]
 
     command += [
+        "-vga", args.vga,
         "-display", "none",
         "-serial", f"file:{serial_path}",
         "-monitor", "none",
@@ -294,13 +295,6 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
         "-no-reboot",
         "-pidfile", str(workdir / "qemu.pid"),
     ]
-    if args.vga == "std":
-        # The default QEMU std-VGA EDID is 1280x800. EclipseOS evidence must be
-        # captured at 1920x1080, so advertise that mode explicitly. The
-        # VirtualBox storage-profile test still uses the same std-VGA device.
-        command += ["-vga", "none", "-device", "VGA,edid=on,xres=1920,yres=1080"]
-    else:
-        command += ["-vga", args.vga]
 
     kvm_usable = (
         sys.platform.startswith("linux")
