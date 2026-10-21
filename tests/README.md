@@ -5,7 +5,8 @@ Automated tests are a release gate. This directory will grow with the build.
 Current tests:
 
 - [`../scripts/test-qemu.sh`](../scripts/test-qemu.sh) — wrapper for headless
-  UEFI and BIOS boot tests.
+  UEFI and BIOS boot tests, plus the VirtualBox storage-profile test (`pc`
+  machine, IDE optical drive, 2048 MiB, standard VGA).
 - [`qemu_boot_test.py`](qemu_boot_test.py) — QEMU/QMP driver: waits for a
   serial marker from the live desktop, captures early diagnostic screenshots
   and a final framebuffer screenshot, rejects failed units, boot-failure
@@ -22,6 +23,22 @@ both reported the marker after 22.1 s with `failed_units=0`, and both result
 files report `"result": "pass"`. The strict ISO also passed both tests in run
 #4 at 24.2 s. Evidence is in
 [`../docs/evidence/phase1`](../docs/evidence/phase1/README.md).
+
+### VirtualBox storage-profile coverage
+
+`make test-vbox-uefi` uses the VirtualBox wizard's default storage shape:
+UEFI, `pc`, an IDE-attached optical drive, 2048 MiB, and a standard QEMU VGA
+adapter. QEMU's `-vga vmware` device is not a substitute for VirtualBox:
+Linux detects that it is running under QEMU and `vmwgfx` refuses to probe it,
+so the graphical session cannot start. The real VMSVGA path is therefore
+covered by the local VirtualBox acceptance test, while QEMU covers the
+storage/firmware path.
+
+`make test-vbox-unattended` is a **manual negative control**, not part of
+`make test-all`. It boots the extracted kernel and initrd with no `boot=live`
+on the command line and is expected to stop in the initramfs. It documents the
+rewritten-menu failure mode; it is not a release gate. The positive boot path
+and the prevention of VISO creation are the regression checks.
 
 ### Serial marker contract
 
