@@ -19,7 +19,8 @@ printf 'Shell syntax\n'
 for script in "$ROOT_DIR"/scripts/*.sh; do
     bash -n "$script" || fail "bash syntax: ${script#"$ROOT_DIR"/}"
 done
-for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot; do
+for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot \
+            "$ROOT_DIR"/build/config/hooks/normal/*.binary; do
     sh -n "$hook" || fail "sh syntax: ${hook#"$ROOT_DIR"/}"
 done
 printf '  ok\n'
@@ -27,7 +28,8 @@ printf '  ok\n'
 if command -v shellcheck >/dev/null 2>&1; then
     printf 'ShellCheck\n'
     shellcheck -s bash "$ROOT_DIR"/scripts/*.sh
-    for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot; do
+    for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot \
+                "$ROOT_DIR"/build/config/hooks/normal/*.binary; do
         shellcheck -s sh "$hook"
     done
     printf '  ok\n'

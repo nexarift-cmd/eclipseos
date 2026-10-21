@@ -3,7 +3,10 @@
 
 This is deliberately dependency-free (Python standard library only). It:
 
-1. starts QEMU with UEFI (OVMF) or legacy BIOS firmware;
+1. starts QEMU with UEFI (OVMF) or legacy BIOS firmware, with an optional
+   VirtualBox-like ``pc`` machine, VMware SVGA adapter and IDE optical drive;
+   in direct-kernel mode it can boot an extracted kernel/initrd without a
+   ``boot=live`` argument, emulating a rewritten VirtualBox unattended menu;
 2. reads the serial console until the live image's boot-check service emits
    ``ECLIPSEOS_BOOT_OK``;
 3. rejects a non-zero ``failed_units`` count;
@@ -248,12 +251,42 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     command = [
         "qemu-system-x86_64",
         "-name", "eclipseos-test",
-        "-machine", "q35",
+        "-machine", args.machine,
         "-m", str(args.memory),
         "-smp", str(args.cpus),
-        "-cdrom", str(iso),
-        "-boot", "order=d,menu=off",
-        "-vga", "std",
+    ]
+
+    if args.optical == "ide":
+        if args.machine != "pc":
+            die("--optical ide requires --machine pc")
+        # Secondary IDE master: this is the layout used by the VirtualBox
+        # wizard's default IDE optical controller.
+        command += [
+            "-drive",
+            f"if=ide,index=2,media=cdrom,readonly=on,file={iso}",
+        ]
+    else:
+        command += ["-cdrom", str(iso)]
+
+    if args.direct_kernel:
+        if not args.kernel or not args.initrd:
+            die("--direct-kernel requires --kernel and --initrd")
+        kernel = Path(args.kernel).resolve()
+        initrd = Path(args.initrd).resolve()
+        if not kernel.is_file():
+            die(f"kernel not found: {kernel}")
+        if not initrd.is_file():
+            die(f"initrd not found: {initrd}")
+        command += [
+            "-kernel", str(kernel),
+            "-initrd", str(initrd),
+            "-append", args.kernel_append,
+        ]
+    else:
+        command += ["-boot", "order=d,menu=off"]
+
+    command += [
+        "-vga", args.vga,
         "-display", "none",
         "-serial", f"file:{serial_path}",
         "-monitor", "none",
@@ -303,6 +336,36 @@ def main() -> int:
     parser.add_argument("--timeout", type=int, default=900)
     parser.add_argument("--memory", type=int, default=4096)
     parser.add_argument("--cpus", type=int, default=2)
+    parser.add_argument(
+        "--machine",
+        choices=("q35", "pc"),
+        default="q35",
+        help="QEMU machine type (default: q35; pc for VirtualBox-like IDE)",
+    )
+    parser.add_argument(
+        "--vga",
+        choices=("std", "vmware"),
+        default="std",
+        help="QEMU VGA adapter (default: std; vmware is VMSVGA-like)",
+    )
+    parser.add_argument(
+        "--optical",
+        choices=("auto", "ide"),
+        default="auto",
+        help="Optical attachment (default: q35 -cdrom; ide is secondary master)",
+    )
+    parser.add_argument(
+        "--direct-kernel",
+        action="store_true",
+        help="Boot the supplied kernel/initrd directly instead of the ISO bootloader",
+    )
+    parser.add_argument("--kernel", help="Kernel for --direct-kernel")
+    parser.add_argument("--initrd", help="Initrd for --direct-kernel")
+    parser.add_argument(
+        "--kernel-append",
+        default="console=tty0 console=ttyS0,115200n8 quiet",
+        help="Kernel command line for --direct-kernel (default omits boot=live)",
+    )
     parser.add_argument("--outdir", required=True)
     parser.add_argument(
         "--screenshot-interval",
@@ -492,6 +555,13 @@ def main() -> int:
     result = {
         "timestamp_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "firmware": args.firmware,
+        "machine": args.machine,
+        "vga": args.vga,
+        "optical": args.optical,
+        "boot_mode": "direct-kernel" if args.direct_kernel else "iso",
+        "kernel": str(Path(args.kernel).resolve()) if args.direct_kernel else None,
+        "initrd": str(Path(args.initrd).resolve()) if args.direct_kernel else None,
+        "kernel_append": args.kernel_append if args.direct_kernel else None,
         "iso": str(iso),
         "iso_sha256": sha256_file(iso),
         "duration_seconds": round(duration, 1),

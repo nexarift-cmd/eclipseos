@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# EclipseOS 0200-disk-info: keep the ISO identity out of VirtualBox's
+# unattended-install detector.
+#
+# VirtualBox's New VM wizard treats a Debian live ISO as an installable
+# Debian image when /.disk/info begins with "Debian GNU/Linux". If the user
+# leaves "Skip Unattended Installation" unticked, VirtualBox builds a VISO
+# which replaces /boot/grub/grub.cfg with an installer menu. That menu drops
+# boot=live, so the live initramfs falls back to BOOT=local and stops in a
+# BusyBox shell.
+#
+# live-boot does not read /.disk/info; this file is on-disc identity only.
+# Brand it as EclipseOS so the wizard does not mistake the live image for a
+# Debian installer. The ISO volume label and all live-boot metadata are
+# unchanged.
+set -eu
+
+: "${EOS_VERSION:?EOS_VERSION is not set}"
+
+printf 'EclipseOS %s amd64 Live\n' "${EOS_VERSION}" > .disk/info

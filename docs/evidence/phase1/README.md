@@ -138,6 +138,25 @@ because VirtualBox was running under Windows' Hyper-V/NEM path on this
 low-memory host. The graphical session still came up. The same warning was
 not seen in QEMU, which uses a different virtual graphics adapter.
 
+## VirtualBox unattended-install regression
+
+A user-reported VirtualBox VM created by the New VM wizard with the ISO added
+in the wizard dropped to a BusyBox `(initramfs)` prompt. The exact VM was not
+available in this host's registry. The same VirtualBox unattended-install path
+was reproduced with a disposable EFI/2048 MiB/VMSVGA VM: VirtualBox created an
+auxiliary VISO which replaced `/boot/grub/grub.cfg` and removed
+`boot=live`. The live initramfs therefore fell back to `BOOT=local`.
+
+The reproduction, generated menu, BusyBox screenshot and fix are recorded in
+[`virtualbox-unattended.md`](virtualbox-unattended.md). The current build
+brands `/.disk/info` as EclipseOS so VirtualBox no longer classifies the live
+image as a Debian installer, and the live initramfs defaults to `BOOT=live`
+as a defence in depth. The QEMU suite includes a VirtualBox-like EFI/IDE/
+VMware-SVGA boot and a rewritten-menu boot without `boot=live`.
+
+2048 MiB is the accepted VirtualBox acceptance size on this host. 4096 MiB is
+recommended but untested here.
+
 ## Known non-fatal warnings
 
 The build log contains normal live-build/package-install warnings:

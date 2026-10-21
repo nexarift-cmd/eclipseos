@@ -9,7 +9,7 @@ and the ISO does not pretend otherwise.
 
 | Capability | Status in the EclipseOS ISO | Notes |
 | --- | --- | --- |
-| Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. The 4096 MiB target could not start on the 5.1 GB test host. |
+| Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
 | Graphics controller | VMSVGA | Selected by `scripts/create-vbox-vm.sh`; 128 MiB video RAM. |
 | Basic desktop rendering | Verified at 2048 MiB via X11/openbox | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
 | Automatic guest resolution / window resize | **Not available** | Requires Guest Additions. Set a mode manually with `xrandr` if the virtual monitor exposes one. |
@@ -21,6 +21,38 @@ and the ISO does not pretend otherwise.
 | Secure Boot | **Not tested** | Test with Secure Boot disabled until the signed-boot path is verified in Phase 6. |
 | Audio | Expected | Intel HDA emulation. No Guest Additions required. |
 | Time synchronisation | systemd-timesyncd over NAT | No Guest Additions time sync. |
+
+## New VM wizard: the unattended-install trap
+
+VirtualBox's **New VM** wizard can create a different optical medium than the
+ISO you selected. If the ISO is added in the wizard and **Skip Unattended
+Installation** is left unticked, VirtualBox detects the Debian-derived live
+image as a Debian installer and builds an auxiliary VISO. The VISO maps a
+generated `/boot/grub/grub.cfg` over the live ISO's menu. That generated menu
+replaces the kernel command line and **removes `boot=live`**, so the kernel
+starts but `initramfs-tools` falls back to `BOOT=local` and stops at a BusyBox
+`(initramfs)` prompt. This is not an EclipseOS squashfs or kernel failure.
+
+Reproduction and logs are in
+[`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
+
+There are three ways to avoid or recover from it:
+
+1. **Use a current EclipseOS ISO.** The build brands `/.disk/info` as
+   `EclipseOS ...` instead of `Debian GNU/Linux ...`, so VirtualBox no longer
+   offers the Debian unattended path. The live ISO is attached directly.
+2. **In the wizard, tick "Skip Unattended Installation".** This keeps the
+   original ISO's GRUB menu and its `boot=live` argument.
+3. **Attach the ISO after creating the VM.** Create the VM without an ISO,
+   then add the ISO to the optical drive in Storage settings. This bypasses
+   the wizard's unattended medium entirely.
+
+The live initramfs also defaults to `BOOT=live` as a defence in depth. If an
+older VM already has a VirtualBox unattended VISO, replacing the ISO file it
+imports with a current build lets that VM boot live again even though the VISO
+still supplies the rewritten menu. The `/etc/initramfs-tools/initramfs.conf`
+line used to generate that initramfs is restored after the initrd is built, so
+an installed system does not inherit `BOOT=live`.
 
 ## Why the guest utilities are absent
 
@@ -74,12 +106,16 @@ These are host-side or user-side options, not features of the ISO:
 
 `scripts/create-vbox-vm.sh` creates a VM with:
 
-- 4096 MiB RAM, 2 vCPUs;
+- 4096 MiB RAM by default, 2 vCPUs; use `--memory 2048` for the acceptance
+  configuration on this 5.1 GB host;
 - 128 MiB video RAM, VMSVGA;
 - EFI firmware by default (`--no-efi` for BIOS);
 - a 25 GiB VDI disk;
 - the ISO attached to the SATA optical drive;
 - NAT networking.
+
+The script path attaches the ISO directly and is not affected by the wizard's
+unattended VISO trap.
 
 It no longer enables clipboard or drag-and-drop modes, because those settings
 would only be meaningful with Guest Additions. If you install Guest Additions
@@ -90,12 +126,15 @@ yourself, enable those features in VirtualBox afterwards.
 VirtualBox 7.2.20 booted the ISO in EFI and BIOS modes on 2026-10-20. Both
 sessions reached the live X11 desktop, with the GRUB menu and desktop captured
 in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2 vCPUs,
-128 MiB VMSVGA video and a 25 GiB disk, but **2048 MiB RAM instead of the
-script's 4096 MiB**, because this 5.1 GB host cannot allocate the 4 GiB guest.
-The exact failure is in
+128 MiB VMSVGA video and a 25 GiB disk.
+
+**2048 MiB is the accepted VirtualBox acceptance size on this host.** The
+script's 4096 MiB setting is the recommended configuration, but it could not be
+started here: this 5.1 GB host has no hardware-virtualisation passthrough and
+cannot allocate the 4 GiB guest. The exact failure is in
 [`evidence/phase1/virtualbox-host-limit.txt`](evidence/phase1/virtualbox-host-limit.txt).
-The 4096 MiB configuration still needs a host with enough RAM and working
-hardware virtualisation, or real hardware.
+4096 MiB remains **recommended but untested** on this host and must be checked
+on a larger host or real hardware before being claimed as verified.
 
 The BIOS run's 30-second screenshot showed `vmwgfx` warnings while VirtualBox
 was using its Hyper-V/NEM fallback; the desktop was present at 60 seconds.

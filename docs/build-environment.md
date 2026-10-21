@@ -17,18 +17,20 @@ Debian build host. Its current limits are:
 | Free disk on C: | About 10 GB after downloading the ISO and test evidence |
 | Linux environment | No WSL distribution; WSL feature not installed |
 | Containers | No Docker/Podman |
-| VirtualBox | Installed, 7.2.20; EFI and BIOS 2 GiB test VMs ran |
+| VirtualBox | Installed, 7.2.20; EFI and BIOS 2048 MiB acceptance VMs ran |
 | QEMU / xorriso / live-build | Not installed |
 | Network | Available (Debian/GitHub endpoints reachable) |
 
 Consequences:
 
 - the ISO is built by CI, not in this session;
-- VirtualBox EFI and BIOS boots were verified locally at 2048 MiB;
-- the script's 4096 MiB VM cannot start here: the guest RAM allocation fails
-  on a 5.1 GB host with no hardware-virtualisation passthrough. The exact error
-  is recorded in
+- VirtualBox EFI and BIOS boots were verified locally at the accepted
+  2048 MiB size;
+- the script's 4096 MiB recommended VM cannot start here: the guest RAM
+  allocation fails on a 5.1 GB host with no hardware-virtualisation
+  passthrough. The exact error is recorded in
   [`evidence/phase1/virtualbox-host-limit.txt`](evidence/phase1/virtualbox-host-limit.txt);
+- 4096 MiB remains recommended but untested on this host;
 - QEMU boot tests run in CI with KVM when the runner exposes it, otherwise TCG;
 - Calamares, Plasma and real-hardware behaviour still need suitable hosts.
 
@@ -176,8 +178,15 @@ VBoxManage --version
 ./scripts/create-vbox-vm.sh \
   --iso "$PWD/eclipseos-26.10-amd64.iso" \
   --name EclipseOS-26.10 \
+  --memory 2048 \
   --start
 ```
+
+2048 MiB is the accepted size on this host. The script defaults to 4096 MiB,
+which is recommended but cannot start on this 5.1 GB host. If you create the VM
+in the graphical wizard instead of using the script, tick **Skip Unattended
+Installation**; see
+[`virtualbox-limitations.md`](virtualbox-limitations.md#new-vm-wizard-the-unattended-install-trap).
 
 ## Option C: WSL2 on Windows
 

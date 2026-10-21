@@ -11,7 +11,7 @@ SHA256 := $(ISO).sha256
 VM_NAME ?= EclipseOS-$(VERSION)
 VM_DIR ?= $(HOME)/VirtualBox VMs
 
-.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-all test-vm clean distclean
+.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-vbox-uefi test-vbox-unattended test-all test-vm clean distclean
 
 all: iso
 
@@ -29,7 +29,9 @@ help:
 	  '  make test        Alias for test-all' \
 	  '  make test-uefi   Boot-test the ISO in QEMU with UEFI/OVMF' \
 	  '  make test-bios   Boot-test the ISO in QEMU with legacy BIOS' \
-	  '  make test-all    Run both QEMU boot tests' \
+	  '  make test-vbox-uefi  UEFI + pc machine + IDE optical + VMware SVGA, 2048 MiB' \
+	  '  make test-vbox-unattended  Boot without boot=live (rewritten-menu regression)' \
+	  '  make test-all    Run all QEMU boot tests' \
 	  '  make test-vm     Create and start a VirtualBox VM (VBoxManage required)' \
 	  '  make clean       Remove build output and generated assets' \
 	  '  make distclean   clean + remove downloaded caches and local artefacts'
@@ -63,7 +65,26 @@ test-uefi:
 test-bios:
 	@./scripts/test-qemu.sh --firmware bios --iso "$(ISO)"
 
-test-all: test-uefi test-bios
+test-vbox-uefi:
+	@./scripts/test-qemu.sh \
+		--firmware uefi \
+		--machine pc \
+		--vga vmware \
+		--optical ide \
+		--memory 2048 \
+		--iso "$(ISO)"
+
+test-vbox-unattended:
+	@./scripts/test-qemu.sh \
+		--firmware uefi \
+		--machine pc \
+		--vga vmware \
+		--optical ide \
+		--memory 2048 \
+		--direct-kernel-no-live \
+		--iso "$(ISO)"
+
+test-all: test-uefi test-bios test-vbox-uefi test-vbox-unattended
 
 test-vm: iso
 	@./scripts/create-vbox-vm.sh --iso "$(ISO)" --name "$(VM_NAME)" --start

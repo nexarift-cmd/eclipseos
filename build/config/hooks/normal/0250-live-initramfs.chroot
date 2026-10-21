@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# EclipseOS 0250-live-initramfs: make the live initramfs default to live-boot.
+#
+# VirtualBox's New VM wizard can mistake a Debian-derived live ISO for a
+# Debian installer. When "Skip Unattended Installation" is left unticked it
+# creates a VISO which replaces /boot/grub/grub.cfg with an installer menu.
+# That menu removes the "boot=live" kernel argument, so the kernel starts but
+# initramfs-tools falls back to BOOT=local and drops to a BusyBox shell.
+#
+# Bake BOOT=live into the generated live initramfs as a defence in depth.
+# /etc/initramfs-tools/initramfs.conf is restored afterwards, so an installed
+# system generated from the live root does not inherit live-boot.
+set -eu
+export LC_ALL=C
+
+CONF=/etc/initramfs-tools/initramfs.conf
+BACKUP=/etc/initramfs-tools/initramfs.conf.eclipseos-backup
+
+fail() {
+    printf '0250-live-initramfs: %s\n' "$*" >&2
+    exit 1
+}
+
+[ -f "$CONF" ] || fail "initramfs configuration is missing: $CONF"
+
+restore() {
+    if [ -f "$BACKUP" ]; then
+        cp -p "$BACKUP" "$CONF"
+        rm -f "$BACKUP"
+    fi
+}
+trap restore EXIT HUP INT TERM
+
+cp -p "$CONF" "$BACKUP"
+{
+    printf '\n# EclipseOS live image: initramfs-tools has no boot= parameter.\n'
+    printf 'BOOT=live\n'
+} >> "$CONF"
+
+update-initramfs -u -k all
+
+# live-build's chroot_hacks runs after chroot_hooks and otherwise regenerates
+# the initramfs with "update-initramfs -k all -t -u" after this hook has
+# restored the configuration. That would silently remove BOOT=live. The
+# marker is live-build's documented skip switch for that regeneration; it is
+# removed by chroot_hacks afterwards.
+touch /initrd.img_has_already_been_regenerated
+
+restore
+trap - EXIT HUP INT TERM

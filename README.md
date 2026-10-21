@@ -18,18 +18,23 @@ update experience. The upstream components are credited in
 > produced the default `eclipseos-26.10-amd64.iso`
 > (SHA256 `f8bbf22a9354b2d9c3524ef11a3de59040a70d35011bc617d235ffa47eb4ac4a`).
 > QEMU UEFI and BIOS both passed, and VirtualBox EFI and BIOS both reached the
-> live desktop. The VirtualBox runs used 2048 MiB because this 5 GB Windows
-> host cannot start the script's 4096 MiB target. [Run
+> live desktop. **2048 MiB is the accepted VirtualBox test size on this host;**
+> 4096 MiB is recommended but untested here because the 5 GB Windows host
+> cannot start that guest. [Run
 > #4](https://github.com/nexarift-cmd/eclipseos/actions/runs/39362243286) also
 > built the strict `STRICT_FOSS=1` image from `main` only with zero non-free
-> firmware packages; both QEMU boots passed. See
+> firmware packages; both QEMU boots passed. The VirtualBox wizard's
+> unattended-install trap is reproduced; its fix and regression tests are
+> undergoing verification. See
+> [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) and the
+> [reproduction evidence](docs/evidence/phase1/virtualbox-unattended.md). See
 > [`docs/evidence/phase1`](docs/evidence/phase1/README.md). Phase 2 has not
 > started.
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
-| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Default and strict ISOs built; QEMU boot pass for both, VirtualBox EFI/BIOS pass for default; 4096 MiB VM pending |
+| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Default and strict ISOs built; QEMU boot pass for both; VirtualBox EFI/BIOS pass at the accepted 2048 MiB; 4096 MiB recommended but untested here |
 | 2 | Plasma desktop, taskbar, Start menu, themes | Not started |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
@@ -142,8 +147,9 @@ cd eclipseos
 make doctor          # verify OS, tools, disk, CPU and memory
 make static-check    # shell lint, Python/JSON syntax, desktop entry
 make iso             # build eclipseos-26.10-amd64.iso + .sha256 + .buildinfo
-make test            # headless QEMU boot checks (UEFI + BIOS)
-make test-vm         # create and start a 4 GB / 2 vCPU / EFI VirtualBox VM
+make test            # QEMU UEFI/BIOS + VirtualBox-like EFI/IDE + rewritten-menu tests
+make test-vm         # create a 4 GB recommended / 2 vCPU / EFI VirtualBox VM
+                     # (use --memory 2048 for the accepted size on this host)
 ```
 
 A strict open-source build omits all `non-free-firmware` packages:
@@ -175,7 +181,9 @@ account.
 
 [`.github/workflows/build.yml`](.github/workflows/build.yml) builds the ISO in
 a privileged Debian 13 container on `ubuntu-24.04`, runs the static checks,
-boots the image in QEMU with OVMF (UEFI) and SeaBIOS, and uploads the ISO,
+boots the image in QEMU with OVMF (UEFI), SeaBIOS, a VirtualBox-like `pc`
+machine with an IDE optical drive and VMware SVGA at 2048 MiB, and a
+rewritten-menu test that boots without `boot=live`, then uploads the ISO,
 checksum, build info, serial logs and screenshots as artifacts. A manual
 `workflow_dispatch` run can build both the default and `STRICT_FOSS=1`
 flavours.
@@ -192,8 +200,9 @@ the same SHA256; its strict job built a 464 MiB main-only ISO with
 `0300-licences: 0 approved non-free-firmware package(s)`, and both QEMU boots
 passed. The exact checksums, logs and screenshots are in
 [`docs/evidence/phase1`](docs/evidence/phase1/README.md). VirtualBox remains a
-manual acceptance environment, not a CI virtualiser; the EFI/BIOS result at
-2048 MiB is recorded in the evidence directory. Read
+manual acceptance environment, not a CI virtualiser; the accepted EFI/BIOS
+result at 2048 MiB is recorded in the evidence directory, and 4096 MiB is
+recommended but untested here. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
 

@@ -7,11 +7,14 @@ checks have actually run and the evidence is recorded.
 Current state: **Phase 0 complete. The Phase 1 default and strict ISOs have
 been built and boot-tested.** GitHub Actions run #3 built the default ISO;
 QEMU UEFI and BIOS both reached the desktop, and VirtualBox EFI and BIOS both
-reached the desktop at 2048 MiB. Run #4 built the strict main-only image with
-zero non-free firmware packages and passed both QEMU boots. The script's
-4096 MiB VirtualBox target remains open because this test host cannot start it.
-Phase 2 has not started. Evidence:
-[`evidence/phase1`](evidence/phase1/README.md).
+reached the desktop at **2048 MiB, the accepted size on this host**. Run #4
+built the strict main-only image with zero non-free firmware packages and
+passed both QEMU boots. 4096 MiB is recommended but remains untested because
+this 5.1 GB host cannot start the guest. The VirtualBox New VM wizard's
+unattended-install trap is reproduced; its fix and QEMU regression tests are
+undergoing verification. Phase 2 has not started. Evidence:
+[`evidence/phase1`](evidence/phase1/README.md) and
+[`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
 
 ## Phase 0 — Plan and repository skeleton
 
@@ -65,16 +68,16 @@ Evidence: ISO name, SHA256, build log, serial logs, screenshots, test commands.
 | Branding assets inside the live-build tree | Present in the built image; the boot and desktop screenshots show them |
 | `make iso` / SHA256 / build-info | Passed; default 890 MiB and strict 464 MiB ISOs, both SHA256-verified after download |
 | QEMU UEFI and BIOS boot tests | Passed for both flavours; zero failed units |
-| VirtualBox EFI and BIOS boot | Default ISO passed at 2048 MiB; 4096 MiB target blocked by the test host's memory/virtualisation limits |
+| VirtualBox EFI and BIOS boot | Default ISO passed at the accepted 2048 MiB; 4096 MiB is recommended but blocked by the test host's memory/virtualisation limits |
 | Strict `STRICT_FOSS=1` build | Passed; `main` only, zero non-free firmware packages, both QEMU boots pass |
 | GitHub Actions build | Run #3 and run #4 both succeeded |
 
 The acceptance line "VirtualBox EFI and BIOS both reach the live environment"
-is met at 2048 MiB, with the caveat recorded in
+is met at the **accepted 2048 MiB** size, with the host limitation recorded in
 [`evidence/phase1/virtualbox-host-limit.txt`](evidence/phase1/virtualbox-host-limit.txt).
-The Phase 1 gate stays open only for the exact 4096 MiB VM, which this host
-could not start; the strict build is verified. Static checks alone would not
-have been acceptance.
+4096 MiB is recommended but not an acceptance blocker for this host; it must
+be verified on a host with enough RAM and working virtualisation before it is
+claimed. The strict build is verified. Static checks alone are not acceptance.
 
 ## Phase 2 — Desktop experience
 
