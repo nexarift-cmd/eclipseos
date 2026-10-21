@@ -118,13 +118,10 @@ fi
 
 if command -v xorriso >/dev/null 2>&1; then
     IDENTITY_TMP="$(mktemp -d "${TMPDIR:-/tmp}/eclipseos-identity.XXXXXX")"
+    ISO_IDENTITY="$IDENTITY_TMP/disk-info"
     xorriso -osirrox on -indev "$ISO" \
-        -extract /.disk/info "$IDENTITY_TMP" >/dev/null
-    ISO_IDENTITY="$(find "$IDENTITY_TMP" -type f -path '*/.disk/info' -print -quit)"
-    if [[ -z "$ISO_IDENTITY" ]]; then
-        ISO_IDENTITY="$(find "$IDENTITY_TMP" -type f -name info -print -quit)"
-    fi
-    if [[ -z "$ISO_IDENTITY" ]]; then
+        -extract /.disk/info "$ISO_IDENTITY" >/dev/null
+    if [[ ! -f "$ISO_IDENTITY" ]]; then
         printf 'error: could not extract /.disk/info from the ISO.\n' >&2
         exit 1
     fi
@@ -145,11 +142,10 @@ if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
     fi
 
     BOOT_TMP="$(mktemp -d "${TMPDIR:-/tmp}/eclipseos-boot.XXXXXX")"
-    mkdir -p "$BOOT_TMP/grub" "$BOOT_TMP/extract"
+    GRUB_CFG="$BOOT_TMP/grub.cfg"
     xorriso -osirrox on -indev "$ISO" \
-        -extract /boot/grub/grub.cfg "$BOOT_TMP/grub" >/dev/null
-    GRUB_CFG="$(find "$BOOT_TMP/grub" -type f -name grub.cfg -print -quit)"
-    if [[ -z "$GRUB_CFG" ]]; then
+        -extract /boot/grub/grub.cfg "$GRUB_CFG" >/dev/null
+    if [[ ! -f "$GRUB_CFG" ]]; then
         printf 'error: could not extract /boot/grub/grub.cfg from the ISO.\n' >&2
         exit 1
     fi
@@ -159,13 +155,13 @@ if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
         printf 'error: could not find /live/vmlinuz and /live/initrd paths in grub.cfg.\n' >&2
         exit 1
     fi
+    KERNEL="$BOOT_TMP/kernel"
+    INITRD="$BOOT_TMP/initrd"
     xorriso -osirrox on -indev "$ISO" \
-        -extract "$KERNEL_PATH" "$BOOT_TMP/extract" >/dev/null
+        -extract "$KERNEL_PATH" "$KERNEL" >/dev/null
     xorriso -osirrox on -indev "$ISO" \
-        -extract "$INITRD_PATH" "$BOOT_TMP/extract" >/dev/null
-    KERNEL="$(find "$BOOT_TMP/extract" -type f -name "$(basename -- "$KERNEL_PATH")" -print -quit)"
-    INITRD="$(find "$BOOT_TMP/extract" -type f -name "$(basename -- "$INITRD_PATH")" -print -quit)"
-    if [[ -z "$KERNEL" || -z "$INITRD" ]]; then
+        -extract "$INITRD_PATH" "$INITRD" >/dev/null
+    if [[ ! -f "$KERNEL" || ! -f "$INITRD" ]]; then
         printf 'error: extracted kernel or initrd is missing.\n' >&2
         exit 1
     fi
