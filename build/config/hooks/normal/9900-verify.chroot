@@ -41,6 +41,8 @@ for file in \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/metadata.json \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/defaults \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/layouts/org.kde.plasma.desktop-layout.js \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/plasmoidsetupscripts/org.kde.plasma.icontasks.js \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/splash/Splash.qml \
     /usr/share/color-schemes/EclipseOS.colors \
     /usr/share/icons/hicolor/scalable/apps/eclipseos.svg \
