@@ -1,22 +1,48 @@
-# EclipseOS Phase 1 desktop stack.
+# EclipseOS Phase 2 desktop stack.
 #
-# X11 plus lightdm and openbox: the smallest honest graphical session that
-# proves the display stack on UEFI and BIOS. Phase 2 replaces lightdm/openbox
-# with the full Plasma session; nothing here is on the Phase 2 critical path
-# except the X server, fonts and the X11 video drivers.
+# Debian 13 "trixie" ships Plasma 6.3.6 in main. The live session uses SDDM
+# with Plasma Wayland as the default and Plasma X11 as the fallback; no
+# LightDM, Openbox or X11-only fallback shell is installed.
 #
-# Every package is from Debian main (docs/licenses.md).
+# Every package below is from Debian main (docs/licenses.md). The Plasma
+# packages are the upstream KDE applications, not a vendored or repackaged
+# desktop.
 
-# Display manager and greeter
-lightdm
-lightdm-gtk-greeter
+# Display manager and greeter theme
+sddm
+sddm-theme-breeze
 
-# X server, input and video drivers.
-# xserver-xorg-core provides the modesetting driver used by real hardware and
-# by QEMU (bochs-drm/ virtio). The vesa/fbdev/vmware drivers cover VirtualBox
-# (VMSVGA exposes a VMware SVGA II device) and firmware fallbacks.
-# xserver-xorg-legacy keeps X startable on consoles that do not have a logind
-# seat (and is the standard Debian desktop configuration).
+# Plasma desktop and workspace. plasma-workspace already depends on
+# kwin-wayland; kwin-x11 is explicit so the fallback session is complete even
+# when Debian's recommends are disabled.
+plasma-desktop
+plasma-workspace
+kwin-x11
+xwayland
+libgl1-mesa-dri
+plasma-widgets-addons
+plasma-nm
+plasma-pa
+powerdevil
+kscreen
+systemsettings
+kinfocenter
+xdg-desktop-portal-kde
+
+# Session applications used by the default taskbar, Start menu and welcome
+# window. Keep this list small: the full KDE application set belongs in a
+# later application phase, not in the desktop shell itself.
+dolphin
+konsole
+kate
+ark
+gwenview
+kcalc
+kde-spectacle
+
+# X server for the SDDM greeter and the Plasma X11 fallback. Plasma Wayland
+# needs the DRM/KMS drivers, not the X video drivers; both paths are present
+# so a machine without working KMS can still reach the fallback session.
 xserver-xorg-core
 xserver-xorg-legacy
 xserver-xorg-input-libinput
@@ -28,20 +54,24 @@ xauth
 x11-utils
 x11-xserver-utils
 
+# Audio and session plumbing pulled in by Plasma's tray/volume applet.
+pipewire
+wireplumber
+pipewire-pulse
+
 # Boot splash. The script plugin lives in the main plymouth package; the
 # EclipseOS theme is shipped in includes.chroot, so plymouth-themes is not
 # installed (no Debian theme artwork ends up in the image).
 plymouth
 
-# Session and shell
-openbox
-xterm
-feh
-fastfetch
-
-# Fonts, icons, cursors
+# Fonts, icons, cursors and terminal facts
 fonts-dejavu-core
 fonts-liberation
 fonts-inter
+fonts-noto-core
+fonts-noto-color-emoji
+fonts-hack
 adwaita-icon-theme
 hicolor-icon-theme
+breeze-icon-theme
+fastfetch

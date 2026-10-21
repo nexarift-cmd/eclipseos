@@ -26,17 +26,24 @@ for file in \
     /etc/issue \
     /etc/motd \
     /etc/sudoers.d/90-eclipseos-live \
-    /etc/lightdm/lightdm.conf.d/50-eclipseos.conf \
-    /etc/lightdm/lightdm-gtk-greeter.conf \
+    /etc/sddm.conf.d/50-eclipseos.conf \
+    /etc/xdg/kdeglobals \
+    /etc/xdg/kscreenlockerrc \
+    /etc/xdg/kwalletrc \
+    /etc/xdg/autostart/org.eclipseos.welcome.desktop \
     /etc/plymouth/plymouthd.conf \
-    /etc/xdg/openbox/autostart \
-    /etc/xdg/openbox/menu.xml \
-    /etc/xdg/openbox/rc.xml \
-    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-plasma-session \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
     /usr/lib/systemd/system/eclipseos-bootcheck.service \
-    /usr/share/xsessions/eclipseos.desktop \
+    /usr/share/wayland-sessions/eclipseos-wayland.desktop \
+    /usr/share/xsessions/eclipseos-x11.desktop \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/metadata.json \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/defaults \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/layouts/org.kde.plasma.desktop-layout.js \
+    /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/splash/Splash.qml \
+    /usr/share/color-schemes/EclipseOS.colors \
+    /usr/share/icons/hicolor/scalable/apps/eclipseos.svg \
     /usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png \
     /usr/share/pixmaps/eclipseos/eclipseos-mark-256.png \
     /usr/share/plymouth/themes/eclipseos/eclipseos.plymouth \
@@ -45,7 +52,6 @@ for file in \
     /usr/share/plymouth/themes/eclipseos/logo.png \
     /usr/share/plymouth/themes/eclipseos/eclipseos-progress-track.png \
     /usr/share/plymouth/themes/eclipseos/eclipseos-progress-fill.png \
-    /usr/share/themes/EclipseOS/openbox-3/themerc \
     /usr/share/doc/eclipseos/copyright \
     /usr/share/doc/eclipseos/licenses.md \
     /usr/share/doc/eclipseos/packages.tsv \
@@ -55,10 +61,9 @@ for file in \
 done
 
 for file in \
-    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-plasma-session \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
-    /etc/xdg/openbox/autostart \
     ; do
     [ -x "$file" ] || fail "not executable: $file"
 done
@@ -97,7 +102,7 @@ grep -q 'NetworkManager replaces' /etc/resolv.conf \
 # ---------------------------------------------------------------------------
 # Boot units
 # ---------------------------------------------------------------------------
-for unit in lightdm.service NetworkManager.service eclipseos-bootcheck.service; do
+for unit in sddm.service NetworkManager.service eclipseos-bootcheck.service; do
     [ "$(systemctl is-enabled "$unit" 2>/dev/null || true)" = "enabled" ] \
         || fail "$unit is not enabled"
 done
@@ -109,12 +114,36 @@ grep -qx 'Theme=eclipseos' /etc/plymouth/plymouthd.conf \
     || fail 'plymouth is not configured to use the EclipseOS theme'
 
 # ---------------------------------------------------------------------------
-# Desktop metadata
+# Plasma session
 # ---------------------------------------------------------------------------
-grep -q '^Exec=/usr/local/bin/eclipseos-session$' /usr/share/xsessions/eclipseos.desktop \
-    || fail 'the xsessions entry does not launch eclipseos-session'
+for package in plasma-desktop plasma-workspace sddm kwin-x11; do
+    if ! dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then
+        fail "$package is not installed; the Phase 2 desktop is incomplete"
+    fi
+done
 
-grep -qx 'autologin-user=eclipse' /etc/lightdm/lightdm.conf.d/50-eclipseos.conf \
-    || fail 'lightdm is not configured to autologin the live user'
+if dpkg-query -W -f='${db:Status-Abbrev}' lightdm 2>/dev/null | grep -q '^ii'; then
+    fail 'lightdm is still installed; SDDM must be the only display manager'
+fi
+if dpkg-query -W -f='${db:Status-Abbrev}' openbox 2>/dev/null | grep -q '^ii'; then
+    fail 'openbox is still installed; Plasma must own the session'
+fi
 
-printf '9900-verify: all Phase 1 checks passed\n'
+grep -qx 'User=eclipse' /etc/sddm.conf.d/50-eclipseos.conf \
+    || fail 'SDDM is not configured to autologin the live user'
+grep -qx 'Session=eclipseos-wayland' /etc/sddm.conf.d/50-eclipseos.conf \
+    || fail 'SDDM does not default to the EclipseOS Wayland session'
+
+grep -q '^Exec=/usr/local/bin/eclipseos-plasma-session$' /usr/share/wayland-sessions/eclipseos-wayland.desktop \
+    || fail 'the Wayland session does not launch the EclipseOS session wrapper'
+grep -q '^Exec=/usr/bin/startplasma-x11$' /usr/share/xsessions/eclipseos-x11.desktop \
+    || fail 'the X11 fallback session does not launch Plasma'
+
+grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /etc/xdg/kdeglobals \
+    || fail 'the EclipseOS Plasma look and feel is not the system default'
+grep -qx 'ColorScheme=EclipseOS' /etc/xdg/kdeglobals \
+    || fail 'the EclipseOS colour scheme is not the system default'
+grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /home/eclipse/.config/kdeglobals \
+    || fail 'the live user profile does not default to the EclipseOS look and feel'
+
+printf '9900-verify: all Phase 2 checks passed\n'

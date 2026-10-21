@@ -3,10 +3,10 @@
 # EclipseOS live boot verification.
 #
 # Runs once per live boot after the display manager has started. It waits for
-# the graphical session, counts failed systemd units, and writes a single
-# machine-readable marker to the serial console only when the session is
-# genuinely up. The headless QEMU tests (tests/qemu_boot_test.py) depend on
-# this exact contract.
+# the Plasma desktop and its compositor, counts failed systemd units, and
+# writes a single machine-readable marker to the serial console only when the
+# session is genuinely up. The headless QEMU tests
+# (tests/qemu_boot_test.py) depend on this exact contract.
 #
 # On systems without a serial port (for example VirtualBox with no serial
 # adapter) the marker is only logged to the journal; nothing fails.
@@ -15,7 +15,7 @@ set -u
 MARKER_PREFIX="ECLIPSEOS_BOOT_OK"
 FAIL_PREFIX="ECLIPSEOS_BOOT_FAIL"
 SERIAL_DEVICE="/dev/ttyS0"
-SESSION_TIMEOUT=120
+SESSION_TIMEOUT=180
 
 emit() {
     printf '%s\n' "$1"
@@ -34,15 +34,21 @@ fi
 deadline=$(( $(date +%s) + SESSION_TIMEOUT ))
 session=""
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    if pgrep -x openbox >/dev/null 2>&1; then
-        session="x11"
-        break
+    if pgrep -x plasmashell >/dev/null 2>&1; then
+        if pgrep -x kwin_wayland >/dev/null 2>&1; then
+            session="wayland"
+            break
+        fi
+        if pgrep -x kwin_x11 >/dev/null 2>&1; then
+            session="x11"
+            break
+        fi
     fi
     sleep 2
 done
 
 if [ -z "$session" ]; then
-    emit "$FAIL_PREFIX stage=desktop reason=openbox-not-running"
+    emit "$FAIL_PREFIX stage=desktop reason=plasma-not-running"
     exit 1
 fi
 

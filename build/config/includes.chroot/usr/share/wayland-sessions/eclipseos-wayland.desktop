@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=EclipseOS (Wayland)
+Comment=EclipseOS Plasma desktop on Wayland
+Exec=/usr/local/bin/eclipseos-plasma-session
+TryExec=/usr/local/bin/eclipseos-plasma-session
+Type=Application
+DesktopNames=KDE

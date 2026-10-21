@@ -91,9 +91,11 @@ print(f"  ok ({len(hook_packages)} packages)")
 PY
 
 if command -v desktop-file-validate >/dev/null 2>&1; then
-    printf 'Desktop entry\n'
+    printf 'Desktop entries\n'
     desktop-file-validate \
-        "$ROOT_DIR/build/config/includes.chroot/usr/share/xsessions/eclipseos.desktop"
+        "$ROOT_DIR/build/config/includes.chroot/usr/share/wayland-sessions/eclipseos-wayland.desktop" \
+        "$ROOT_DIR/build/config/includes.chroot/usr/share/xsessions/eclipseos-x11.desktop" \
+        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.welcome.desktop"
     printf '  ok\n'
 fi
 

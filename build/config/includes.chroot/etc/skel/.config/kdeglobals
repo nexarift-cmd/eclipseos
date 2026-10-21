@@ -1,0 +1,14 @@
+[KDE]
+LookAndFeelPackage=org.eclipseos.desktop
+ColorScheme=EclipseOS
+SingleClick=false
+AnimationDurationFactor=1
+
+[General]
+font=Inter,10,-1,5,50,0,0,0,0,0
+fixed=Hack,10,-1,5,50,0,0,0,0,0
+menuFont=Inter,10,-1,5,50,0,0,0,0,0
+toolBarFont=Inter,10,-1,5,50,0,0,0,0,0
+
+[Icons]
+Theme=breeze

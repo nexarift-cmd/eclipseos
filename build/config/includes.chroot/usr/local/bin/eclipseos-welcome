@@ -1,28 +1,24 @@
 #!/bin/sh
 #
-# Open a short welcome window in the EclipseOS live session.
+# Open a short welcome window in the EclipseOS live Plasma session.
 #
-# This is a Phase 1 orientation aid, not an application: it prints the live
-# image facts and leaves an interactive shell open. It never runs on an
-# installed system (the live boot flag is required) and does nothing when
-# xterm or fastfetch are unavailable.
+# This is an orientation aid, not an application: it prints the live image
+# facts and leaves an interactive shell open. It never runs on an installed
+# system (the live boot flag is required) and does nothing when Konsole or
+# fastfetch are unavailable.
 set -u
 
 if ! grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
     exit 0
 fi
 
-if ! command -v xterm >/dev/null 2>&1; then
+if ! command -v konsole >/dev/null 2>&1; then
     exit 0
 fi
 
-exec xterm \
-    -T "EclipseOS 26.10 live session" \
-    -fa "DejaVu Sans Mono" \
-    -fs 11 \
-    -bg "#0B0714" \
-    -fg "#F5F1FA" \
-    -geometry 92x28+80+80 \
+exec konsole \
+    --title "EclipseOS 26.10 live session" \
+    --geometry 92x28+80+80 \
     -e sh -c '
         if command -v fastfetch >/dev/null 2>&1; then
             fastfetch --logo none 2>/dev/null || true
@@ -30,7 +26,7 @@ exec xterm \
         printf "\n"
         printf "  EclipseOS 26.10 live image\n"
         printf "  User: eclipse (no password), passwordless sudo\n"
-        printf "  Session: X11 / openbox - Phase 1 preview\n"
+        printf "  Session: Plasma 6 - Wayland default, X11 fallback\n"
         printf "  Installer: arrives in Phase 3\n\n"
         exec sh -i
     '

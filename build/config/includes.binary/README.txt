@@ -2,8 +2,9 @@ EclipseOS 26.10 - live image
 ============================
 
 This is a bootable EclipseOS live image built from Debian GNU/Linux 13
-("trixie") with the Debian live-build tooling. It is a Phase 1 preview: the
-desktop session is X11 with openbox, not the final Plasma desktop.
+("trixie") with the Debian live-build tooling. It is a Phase 2 preview: the
+desktop session is Plasma 6 with SDDM, Wayland by default and Plasma X11 as the
+fallback. Phase 2 visual polish and acceptance are still in progress.
 
 Boot it as a CD/DVD or write it to a USB device. Both UEFI and legacy BIOS
 firmware are supported. The image is hybrid: the same file boots from optical

@@ -1,10 +1,10 @@
 # Live-build configuration
 
-This is the Debian `live-build` tree used by `scripts/build.sh`. It is
-complete for the **Phase 1** minimal live image: hybrid UEFI/BIOS boot,
-GRUB/Plymouth branding, LightDM autologin as `eclipse`, and an openbox X11
-session. No ISO has been built from it yet; see
-[`../docs/roadmap.md`](../docs/roadmap.md).
+This is the Debian `live-build` tree used by `scripts/build.sh`. It contains
+the **Phase 2** desktop preview: hybrid UEFI/BIOS boot, GRUB/Plymouth branding,
+SDDM autologin as `eclipse`, and a Plasma 6 desktop with Wayland as the default
+session and X11 as the fallback. The Phase 1 LightDM/Openbox session has been
+removed. See [`../docs/roadmap.md`](../docs/roadmap.md) for acceptance status.
 
 ## Layout
 

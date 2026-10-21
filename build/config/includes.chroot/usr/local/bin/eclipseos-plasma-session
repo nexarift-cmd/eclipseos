@@ -1,0 +1,17 @@
+#!/bin/sh
+#
+# EclipseOS Plasma Wayland session entry point.
+#
+# SDDM starts a Wayland session without starting an X server, so this wrapper
+# must not try to launch Plasma X11 itself after a failure: startplasma-x11
+# needs the X server that SDDM only provides for an X11 session. The separate
+# eclipseos-x11.desktop session is the supported fallback and can be selected
+# from the SDDM session menu; SDDM can then provide Xorg correctly.
+set -u
+
+export XDG_CURRENT_DESKTOP=KDE
+export XDG_SESSION_DESKTOP=KDE
+export XDG_SESSION_TYPE=wayland
+export DESKTOP_SESSION=plasmawayland
+
+exec /usr/bin/startplasma-wayland
