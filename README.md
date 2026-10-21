@@ -13,29 +13,31 @@ update experience. The upstream components are credited in
 
 ## Project status
 
-> **Default and strict ISOs built and boot-tested:** GitHub Actions
-> [run #3](https://github.com/nexarift-cmd/eclipseos/actions/runs/39359532446)
-> produced the default `eclipseos-26.10-amd64.iso`
-> (SHA256 `f8bbf22a9354b2d9c3524ef11a3de59040a70d35011bc617d235ffa47eb4ac4a`).
-> QEMU UEFI and BIOS both passed, and VirtualBox EFI and BIOS both reached the
-> live desktop. **2048 MiB is the accepted VirtualBox test size on this host;**
-> 4096 MiB is recommended but untested here because the 5 GB Windows host
-> cannot start that guest. [Run
-> #4](https://github.com/nexarift-cmd/eclipseos/actions/runs/39362243286) also
-> built the strict `STRICT_FOSS=1` image from `main` only with zero non-free
-> firmware packages; both QEMU boots passed. The VirtualBox wizard's
-> unattended-install trap is reproduced; its fix and regression tests are
-> undergoing verification. See
-> [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) and the
-> [reproduction evidence](docs/evidence/phase1/virtualbox-unattended.md). See
-> [`docs/evidence/phase1`](docs/evidence/phase1/README.md). Phase 2 has not
-> started.
+> **Phase 1 is accepted at 2048 MiB in VirtualBox.** The user booted the
+> original `d10c78c3…` ISO with **Skip Unattended Installation ticked** and
+> reached the live desktop. The final Phase 1 rebuild is
+> `eclipseos-26.10-amd64.iso`
+> (SHA256 `aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397`).
+> GitHub Actions [run
+> 39547858160](https://github.com/nexarift-cmd/eclipseos/actions/runs/39547858160)
+> passed UEFI, BIOS and the VirtualBox storage-profile QEMU boot, and the
+> final ISO reached the desktop in VirtualBox EFI and BIOS. The unticked
+> wizard path is fixed: VirtualBox no longer detects the image as a Debian
+> installer, so it creates no VISO; the new initramfs also boots through an
+> existing VISO. **4096 MiB is recommended but untested on this 5.1 GB host.**
+> [Run #4](https://github.com/nexarift-cmd/eclipseos/actions/runs/39362243286)
+> built the strict `STRICT_FOSS=1` image with zero non-free firmware packages.
+> See [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md),
+> the [reproduction and fix evidence](docs/evidence/phase1/virtualbox-unattended.md),
+> and the [Phase 1 evidence index](docs/evidence/phase1/README.md). Phase 2
+> has started; the Plasma/SDDM migration is on a separate branch until it
+> boots and passes its gate.
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
-| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | Default and strict ISOs built; QEMU boot pass for both; VirtualBox EFI/BIOS pass at the accepted 2048 MiB; 4096 MiB recommended but untested here |
-| 2 | Plasma desktop, taskbar, Start menu, themes | Not started |
+| 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | **Complete and accepted at 2048 MiB**; final QEMU UEFI/BIOS + VirtualBox storage-profile pass; VirtualBox EFI/BIOS pass; 4096 MiB recommended but untested here |
+| 2 | Plasma desktop, taskbar, Start menu, themes | In progress on a separate branch until the first Plasma ISO boots |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
 | 5 | Snap layouts, widgets, search, lock screen polish | Not started |
@@ -181,12 +183,14 @@ account.
 
 [`.github/workflows/build.yml`](.github/workflows/build.yml) builds the ISO in
 a privileged Debian 13 container on `ubuntu-24.04`, runs the static checks,
-boots the image in QEMU with OVMF (UEFI), SeaBIOS, a VirtualBox-like `pc`
-machine with an IDE optical drive and VMware SVGA at 2048 MiB, and a
-rewritten-menu test that boots without `boot=live`, then uploads the ISO,
-checksum, build info, serial logs and screenshots as artifacts. A manual
-`workflow_dispatch` run can build both the default and `STRICT_FOSS=1`
-flavours.
+boots the image in QEMU with OVMF (UEFI), SeaBIOS, and a VirtualBox-like `pc`
+machine with an IDE optical drive and standard VGA at 2048 MiB, then uploads
+the ISO, checksum, build info, serial logs and screenshots as artifacts. QEMU
+cannot usefully emulate VMSVGA (`vmwgfx` rejects the QEMU hypervisor), so the
+VMSVGA path is covered by the local VirtualBox test. A rewritten-menu boot
+without `boot=live` remains a manual negative control, not a passing gate. A
+manual `workflow_dispatch` run can build both the default and
+`STRICT_FOSS=1` flavours.
 
 [Run #3](https://github.com/nexarift-cmd/eclipseos/actions/runs/39359532446)
 (commit `c874d77`) succeeded end to end. It built the 890 MiB default ISO,
@@ -199,10 +203,15 @@ was a `workflow_dispatch` run of the same commit. Its default job reproduced
 the same SHA256; its strict job built a 464 MiB main-only ISO with
 `0300-licences: 0 approved non-free-firmware package(s)`, and both QEMU boots
 passed. The exact checksums, logs and screenshots are in
-[`docs/evidence/phase1`](docs/evidence/phase1/README.md). VirtualBox remains a
-manual acceptance environment, not a CI virtualiser; the accepted EFI/BIOS
-result at 2048 MiB is recorded in the evidence directory, and 4096 MiB is
-recommended but untested here. Read
+[`docs/evidence/phase1`](docs/evidence/phase1/README.md).
+
+[Run 39547858160](https://github.com/nexarift-cmd/eclipseos/actions/runs/39547858160)
+is the final Phase 1 gate: it rebuilt the default ISO after the VirtualBox
+fix and the test-harness corrections, passed UEFI, BIOS and the
+VirtualBox-storage-profile QEMU boot, and published checksum
+`aade6c67…c397`. VirtualBox remains a manual acceptance environment, not a CI
+virtualiser; the accepted EFI/BIOS result at 2048 MiB is recorded in the
+evidence directory, and 4096 MiB is recommended but untested here. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
 

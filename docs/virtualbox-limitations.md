@@ -33,8 +33,12 @@ replaces the kernel command line and **removes `boot=live`**, so the kernel
 starts but `initramfs-tools` falls back to `BOOT=local` and stops at a BusyBox
 `(initramfs)` prompt. This is not an EclipseOS squashfs or kernel failure.
 
-Reproduction and logs are in
+Reproduction, root cause and final verification are in
 [`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
+The fix is in the final Phase 1 ISO (`aade6c67…c397`): VirtualBox reports
+`Unattended installation supported = no`, `VBoxManage unattended install`
+fails instead of creating a VISO, and the skip path reaches the desktop at
+2048 MiB in both EFI and BIOS.
 
 There are three ways to avoid or recover from it:
 

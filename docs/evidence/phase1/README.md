@@ -6,6 +6,26 @@ GitHub Actions run linked below, and the VirtualBox files come from the
 separate local 2 GiB EFI/BIOS tests described later. The ISO checksum was
 verified after download.
 
+## Phase 1 acceptance
+
+**Phase 1 is accepted at the 2048 MiB VirtualBox size on 2026-10-21.** The
+user booted the original `d10c78c3…` image in a VirtualBox VM created through
+the New VM wizard with **Skip Unattended Installation ticked**. The live
+desktop appeared; the session reported EclipseOS 26.10, the network was up,
+and about 292 MB of RAM was in use. The supplied report did not contain a ping
+transcript (the text was the literal placeholder `<paste>`), so this evidence
+does not claim a ping result.
+
+The unticked wizard path was the regression: it made VirtualBox create a VISO
+and drop to BusyBox. The rebuilt image prevents that classification and also
+boots through an existing VISO; see
+[`virtualbox-unattended.md`](virtualbox-unattended.md) for the reproduction,
+root cause, fix and final verification table.
+
+4096 MiB remains the recommended VM size but is **not verified on this host**.
+The 5.1 GB host cannot start a 4 GiB guest (VirtualBox `VERR_UNRESOLVED_ERROR`,
+error 1455). 2048 MiB is the documented acceptance size.
+
 ## Build
 
 | Item | Value |
@@ -63,6 +83,65 @@ The strict build log, checksum, build-info and QEMU evidence are in
 [`strict/`](strict/README.md). The default job in the same run produced the
 same SHA256 as run #3, which is useful reproducibility evidence but does not
 prove bit-identical builds in general.
+
+## VirtualBox regression fix rebuild
+
+Both the `.disk/info` branding and the `BOOT=live` initramfs change are in the
+rebuild from commit `165d12840cba0fe8ca2ccf78488daed2a8996a37`.
+
+| Item | Value |
+| --- | --- |
+| GitHub Actions run | [39540324903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39540324903) |
+| Artifact | `12318914478` (`eclipseos-26.10-amd64-default`) |
+| ISO size | 933,376,000 bytes |
+| SHA256 | `61d4a8e7d8c21ebdba2a2ae86bfeca07f58be114172dbade0118f6a35a41a840` |
+| `/.disk/info` | `EclipseOS 26.10 amd64 Live` |
+| Initramfs | `BOOT=live` present in `/conf/initramfs.conf` |
+| `unattended detect` | unsupported (`E_FAIL`) |
+| VirtualBox EFI, skip path | desktop at 2048 MiB; screenshot below |
+| VirtualBox BIOS | desktop at 2048 MiB; screenshot below |
+| Existing VISO + new ISO | live X root, no BusyBox; see the regression document |
+
+The build itself succeeded in that run. The job was marked failed only because
+the old test harness still treated the deliberately broken no-`boot=live`
+negative control as a release gate and because QEMU's VMware SVGA adapter was
+misclassified as VMSVGA. Those harness errors are fixed in the subsequent
+test-only commit; they never changed the ISO payload.
+
+![VirtualBox EFI live desktop from the Skip Unattended path](virtualbox-skip-unattended-efi.png)
+
+![VirtualBox BIOS live desktop at 2048 MiB](virtualbox-bios-2048.png)
+
+![Existing VISO with the new ISO: live X root](virtualbox-old-viso-new-iso.png)
+
+### Final CI gate
+
+The test-harness-only commit `a7297fb38d4dcfc671d6042732e2ba9c81cb8a97`
+rebuilt and tested the image once more. This is the final Phase 1 gate:
+
+| Item | Value |
+| --- | --- |
+| GitHub Actions run | [39547858160](https://github.com/nexarift-cmd/eclipseos/actions/runs/39547858160) |
+| Result | success (build, three QEMU boots, ISO upload, test-evidence upload) |
+| ISO size | 933,376,000 bytes |
+| ISO SHA256 | `aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397` |
+| Checksum / build info | [`final.sha256`](eclipseos-26.10-amd64.iso.final.sha256), [`final.buildinfo`](eclipseos-26.10-amd64.iso.final.buildinfo) |
+| Artifact | `12322653801` (`eclipseos-26.10-amd64-default`) |
+| QEMU UEFI | PASS, marker at 31.3 s, `session=x11 failed_units=0` |
+| QEMU BIOS | PASS, marker at 31.3 s, `session=x11 failed_units=0` |
+| QEMU VirtualBox storage profile (UEFI, pc, IDE, std VGA, 2048 MiB) | PASS, marker at 37.3 s, `session=x11 failed_units=0` |
+
+Result files and desktop captures:
+[UEFI result](qemu-final-uefi-result.json),
+[BIOS result](qemu-final-bios-result.json),
+[VirtualBox storage result](qemu-final-vbox-storage-result.json),
+[UEFI desktop](qemu-final-uefi-desktop.png),
+[BIOS desktop](qemu-final-bios-desktop.png),
+[VirtualBox storage desktop](qemu-final-vbox-storage-desktop.png).
+
+The negative no-`boot=live` case is documented in
+[`virtualbox-unattended.md`](virtualbox-unattended.md). It is intentionally
+not a passing gate.
 
 ## QEMU boot tests
 
@@ -151,8 +230,10 @@ The reproduction, generated menu, BusyBox screenshot and fix are recorded in
 [`virtualbox-unattended.md`](virtualbox-unattended.md). The current build
 brands `/.disk/info` as EclipseOS so VirtualBox no longer classifies the live
 image as a Debian installer, and the live initramfs defaults to `BOOT=live`
-as a defence in depth. The QEMU suite includes a VirtualBox-like EFI/IDE/
-VMware-SVGA boot and a rewritten-menu boot without `boot=live`.
+as a defence in depth. The QEMU gate includes a VirtualBox-like EFI/pc/IDE
+boot with standard VGA. QEMU cannot emulate VMSVGA usefully: `vmwgfx` rejects
+the QEMU hypervisor. The rewritten-menu no-`boot=live` boot remains a manual
+negative control, not a passing gate.
 
 2048 MiB is the accepted VirtualBox acceptance size on this host. 4096 MiB is
 recommended but untested here.

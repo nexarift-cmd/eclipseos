@@ -1,0 +1,10 @@
+EclipseOS 26.10
+Image: eclipseos-26.10-amd64.iso
+SHA256: aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397
+Built (UTC): 2026-10-21T05:15:54Z
+SOURCE_DATE_EPOCH: 1792559288
+Git commit: a7297fb38d4dcfc671d6042732e2ba9c81cb8a97
+Licence mode: redistributable-firmware
+Build host: Linux 6.17.0-1022-azure x86_64 GNU/Linux
+live-build: 20250505+deb13u1
+xorriso: xorriso 1.5.6

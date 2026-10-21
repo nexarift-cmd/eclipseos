@@ -1,7 +1,9 @@
 # VirtualBox unattended-install boot failure
 
-Status: **reproduced and root-caused; fix verification is recorded below after
-the rebuilt ISO passes.**
+Status: **root-caused and fixed; verified on the rebuilt ISO.** The fix
+prevents VirtualBox from creating a VISO for the current image, and the new
+live initramfs also boots through an existing VISO that still supplies the
+rewritten menu.
 
 ## Symptom
 
@@ -138,28 +140,40 @@ Two independent build changes are applied:
 The QEMU regression tests are:
 
 - `make test-vbox-uefi`: `pc` machine, IDE secondary-master optical drive,
-  VMware SVGA, UEFI, 2048 MiB;
+  standard QEMU VGA, UEFI, 2048 MiB. This is the release gate for the
+  VirtualBox storage shape. QEMU's `-vga vmware` cannot stand in for VMSVGA:
+  Linux detects QEMU as the hypervisor and `vmwgfx` refuses to probe the
+  device, so the desktop cannot start. The real VMSVGA path is covered by the
+  VirtualBox tests below.
 - `make test-vbox-unattended`: the same configuration, but boots the ISO's
   extracted kernel and initrd directly with a command line that deliberately
-  omits `boot=live`. This is the rewritten-menu condition without requiring
-  VirtualBox on the CI runner.
+  omits `boot=live`. This is a **manual negative control** for the rewritten
+  menu, not part of `make test-all`. It is expected to stop in the initramfs.
 
 ## Verification results
 
-The results below are filled from the rebuilt ISO run. Do not treat the fix as
-verified until every row is complete.
+The final CI rebuild is `eclipseos-26.10-amd64.iso` from commit
+`a7297fb38d4dcfc671d6042732e2ba9c81cb8a97`, workflow run `39547858160`,
+artifact `12322653801`, SHA256
+`aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397`.
+The EFI and BIOS VirtualBox boots below were repeated on the final
+`aade6c67…` artifact. The existing-VISO test used the immediately preceding
+fix build `61d4a8e7…a840` (commit `165d128`); the two ISOs contain the same
+boot payload, and only the reproducible-build timestamp differs. The final CI
+run re-ran the complete QEMU gate on `aade6c67…`.
 
 | Check | Result |
 | --- | --- |
-| New ISO SHA256 / build run | Pending |
-| `/.disk/info` is EclipseOS, not Debian | Pending |
-| New initrd `/conf/initramfs.conf` contains `BOOT=live` | Pending |
-| `unattended detect` says unsupported | Pending |
-| QEMU UEFI + pc + IDE + VMware SVGA, 2048 MiB | Pending |
-| QEMU rewritten-menu (no `boot=live`) | Pending |
-| VirtualBox EFI direct attach, 2048 MiB | Pending |
-| VirtualBox BIOS direct attach, 2048 MiB | Pending |
-| Existing old VISO with the new ISO | Pending |
+| Final ISO SHA256 / build run | **aade6c67…c397**, 933,376,000 bytes, run 39547858160 / artifact 12322653801, commit `a7297fb` |
+| `/.disk/info` is EclipseOS, not Debian | **PASS** — exact text `EclipseOS 26.10 amd64 Live` (27 bytes), checked on the final ISO |
+| New initrd `/conf/initramfs.conf` contains `BOOT=live` | **PASS** — final ISO's zstd initramfs decompressed to 183,221,248 bytes; `BOOT=live` at offset 2400 with the EclipseOS comment |
+| `unattended detect` says unsupported | **PASS** — final ISO: `OS TypeId =` empty, `Unattended installation supported = no`, followed by `E_FAIL` as expected |
+| QEMU UEFI + pc + IDE + standard VGA, 2048 MiB | **PASS** — marker at 37.3 s, `session=x11 failed_units=0`; result in `qemu-final-vbox-storage-result.json` |
+| QEMU rewritten-menu (no `boot=live`) | **Expected failure reproduced** — BusyBox `(initramfs)`, `Unable to find a medium containing a live file system`; manual target, not a gate |
+| VirtualBox EFI, Skip Unattended Installation path, 2048 MiB | **PASS** — final ISO, desktop in about 90 s; `virtualbox-skip-unattended-efi.png` |
+| VirtualBox BIOS direct attach, 2048 MiB | **PASS** — final ISO, desktop in about 100 s; `virtualbox-bios-2048.png` |
+| Existing old VISO with the new ISO | **PASS for the boot regression** — reaches the live X/Openbox root with wallpaper and no BusyBox (`virtualbox-old-viso-new-iso.png`). Phase 1's welcome window and serial marker intentionally require the literal `boot=live` argument, which the VISO menu omits, so neither appears in this path. |
+| User's original `d10c78c3…` ISO with Skip ticked, 2048 MiB | **PASS — user-confirmed** — live desktop, EclipseOS 26.10 session, network up, 292 MB used. No ping transcript was supplied. |
 
 ## Scope and limits
 

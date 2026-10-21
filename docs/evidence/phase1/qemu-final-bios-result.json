@@ -1,0 +1,31 @@
+{
+  "timestamp_utc": "2026-10-21T05:17:00+00:00",
+  "firmware": "bios",
+  "machine": "q35",
+  "vga": "std",
+  "optical": "auto",
+  "boot_mode": "iso",
+  "kernel": null,
+  "initrd": null,
+  "kernel_append": null,
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397",
+  "duration_seconds": 31.3,
+  "marker": "ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261021T051629Z-bios-q35-auto-std/screenshot.png",
+  "screenshot_info": {
+    "width": 1280,
+    "height": 800,
+    "sampled_pixels": 102400,
+    "non_black_ratio": 0.261191,
+    "unique_colours": 796,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261021T051629Z-bios-q35-auto-std/boot-01-0008s.png"
+  ],
+  "result": "pass",
+  "failure_reason": ""
+}

@@ -18,10 +18,11 @@ Current tests:
 - `screenshots/` — generated captures, never edited to hide failures.
 
 The boot marker is emitted by the Phase 1 `eclipseos-bootcheck` service. The
-test ran against the built default ISO in GitHub Actions run #3: UEFI and BIOS
-both reported the marker after 22.1 s with `failed_units=0`, and both result
-files report `"result": "pass"`. The strict ISO also passed both tests in run
-#4 at 24.2 s. Evidence is in
+original default ISO passed UEFI and BIOS in run #3 at 22.1 s, and the strict
+ISO passed both in run #4 at 24.2 s. The final Phase 1 rebuild (run
+`39547858160`) passed all three gates: UEFI, BIOS, and the VirtualBox storage
+profile, the latter at 37.3 s. All markers reported
+`ECLIPSEOS_BOOT_OK stage=desktop session=x11 failed_units=0`. Evidence is in
 [`../docs/evidence/phase1`](../docs/evidence/phase1/README.md).
 
 ### VirtualBox storage-profile coverage

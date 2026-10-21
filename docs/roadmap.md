@@ -4,15 +4,19 @@ Every phase must leave a buildable tree and a bootable ISO. A phase is not
 complete because code was written; it is complete only when its acceptance
 checks have actually run and the evidence is recorded.
 
-Current state: **Phase 0 complete. The Phase 1 default and strict ISOs have
-been built and boot-tested.** GitHub Actions run #3 built the default ISO;
-QEMU UEFI and BIOS both reached the desktop, and VirtualBox EFI and BIOS both
-reached the desktop at **2048 MiB, the accepted size on this host**. Run #4
-built the strict main-only image with zero non-free firmware packages and
-passed both QEMU boots. 4096 MiB is recommended but remains untested because
-this 5.1 GB host cannot start the guest. The VirtualBox New VM wizard's
-unattended-install trap is reproduced; its fix and QEMU regression tests are
-undergoing verification. Phase 2 has not started. Evidence:
+Current state: **Phase 0 complete. Phase 1 complete and accepted at
+2048 MiB.** The final default ISO is
+`aade6c679e41b82bf62aa1a190ca334fbe7091dfcdcaf1254da2d61c04fac397`, built by
+GitHub Actions run `39547858160`. QEMU UEFI, BIOS and the VirtualBox
+storage-profile boot passed; the final ISO also reached the desktop in
+VirtualBox EFI and BIOS. The user accepted the original `d10c78c3…` ISO with
+**Skip Unattended Installation ticked** at 2048 MiB. The unticked wizard path
+is fixed by branding `/.disk/info` (no VISO detection) plus a `BOOT=live`
+initramfs default. 4096 MiB is recommended but remains untested because this
+5.1 GB host cannot start the guest. The strict main-only ISO from run #4
+contains zero non-free firmware packages; it was not rebuilt after the
+Phase 1 fix. Phase 2 has started on a separate branch until its first Plasma
+ISO passes a boot gate. Evidence:
 [`evidence/phase1`](evidence/phase1/README.md) and
 [`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
 
