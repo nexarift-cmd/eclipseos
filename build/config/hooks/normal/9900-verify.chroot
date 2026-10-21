@@ -144,7 +144,7 @@ grep -qx 'Session=eclipseos-x11' /etc/sddm.conf.d/50-eclipseos.conf \
     || fail 'SDDM does not retain the safe X11 fallback session'
 grep -q 'systemd-detect-virt --vm --quiet' /usr/libexec/eclipseos/eclipseos-session-select \
     || fail 'the VM session selector does not use systemd-detect-virt'
-grep -q 'Session=$session' /usr/libexec/eclipseos/eclipseos-session-select \
+grep -q 'Session=[$]session' /usr/libexec/eclipseos/eclipseos-session-select \
     || fail 'the VM session selector does not write the selected SDDM session'
 
 grep -q '^Exec=/usr/local/bin/eclipseos-plasma-session$' /usr/share/wayland-sessions/eclipseos-wayland.desktop \
