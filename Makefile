@@ -31,6 +31,7 @@ help:
 	  '  make test-bios   Boot-test the ISO in QEMU with legacy BIOS' \
 	  '  make test-vbox-uefi  UEFI + pc machine + IDE optical + standard VGA, 2048 MiB' \
 	  '  make test-vbox-unattended  Manual negative control: no boot=live on the command line' \
+	  '  make test-theme-light  Manual light-theme boot + screenshot evidence' \
 	  '  make test-all    Run all QEMU boot tests' \
 	  '  make test-vm     Create and start a VirtualBox VM (VBoxManage required)' \
 	  '  make clean       Remove build output and generated assets' \
@@ -91,6 +92,17 @@ test-vbox-unattended:
 		--optical ide \
 		--memory 2048 \
 		--direct-kernel-no-live \
+		--iso "$(ISO)"
+
+# Light-theme evidence boot. The extracted kernel is passed boot=live plus the
+# EclipseOS theme selector, so the normal live boot path runs and the boot
+# checker reports theme=light. It is not in test-all yet: Phase 2 light-theme
+# evidence is still being collected and is not claimed as accepted.
+test-theme-light:
+	@./scripts/test-qemu.sh \
+		--firmware bios \
+		--direct-kernel-live \
+		--kernel-append-extra "eclipseos.theme=light" \
 		--iso "$(ISO)"
 
 test-all: test-uefi test-bios test-vbox-uefi

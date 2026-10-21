@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Select the EclipseOS live colour scheme before SDDM starts.
+#
+# Normal boots stay on the dark EclipseOS scheme. A test or recovery boot can
+# pass eclipseos.theme=light on the kernel command line; this is deliberately
+# a one-shot live-image selection, not a persistent setting. The user can
+# change the scheme from Plasma System Settings after login.
+set -eu
+
+theme=dark
+for argument in $(cat /proc/cmdline); do
+    case "$argument" in
+        eclipseos.theme=light) theme=light ;;
+        eclipseos.theme=dark) theme=dark ;;
+    esac
+done
+
+printf '%s\n' "$theme" > /run/eclipseos-theme
+
+if [ "$theme" != "light" ]; then
+    exit 0
+fi
+
+config=/home/eclipse/.config/kdeglobals
+[ -f "$config" ] || exit 0
+
+sed -i 's/^ColorScheme=.*/ColorScheme=EclipseOSLight/' "$config"
+grep -qx 'ColorScheme=EclipseOSLight' "$config" \
+    || { printf 'eclipseos-theme: could not select the light colour scheme\n' >&2; exit 1; }
+chown eclipse:eclipse "$config"

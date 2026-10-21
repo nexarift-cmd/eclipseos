@@ -1,0 +1,31 @@
+{
+  "timestamp_utc": "2026-10-21T06:48:13+00:00",
+  "firmware": "uefi",
+  "machine": "q35",
+  "vga": "std",
+  "optical": "auto",
+  "boot_mode": "iso",
+  "kernel": null,
+  "initrd": null,
+  "kernel_append": null,
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "ca5f25f53fc1092b68968917391b7c7fdeab03706c38226e16cd1bea2c27c8cb",
+  "duration_seconds": 40.3,
+  "marker": "eclipseos login: ECLIPSEOS_BOOT_OK stage=desktop session=wayland failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261021T064733Z-uefi-q35-auto-std/screenshot.png",
+  "screenshot_info": {
+    "width": 1280,
+    "height": 800,
+    "sampled_pixels": 102400,
+    "non_black_ratio": 0.519541,
+    "unique_colours": 1516,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261021T064733Z-uefi-q35-auto-std/boot-01-0008s.png"
+  ],
+  "result": "pass",
+  "failure_reason": ""
+}

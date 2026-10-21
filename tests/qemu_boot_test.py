@@ -343,6 +343,12 @@ def main() -> int:
         help="QEMU machine type (default: q35; pc for VirtualBox-like IDE)",
     )
     parser.add_argument(
+        "--expect-session",
+        choices=("wayland", "x11"),
+        default=None,
+        help="Require the live session named in the boot marker",
+    )
+    parser.add_argument(
         "--vga",
         choices=("std", "vmware"),
         default="std",
@@ -493,6 +499,18 @@ def main() -> int:
         elif failed_units is not None and failed_units != 0:
             failure_reason = f"{failed_units} systemd unit(s) failed in the live session"
             log(failure_reason)
+        elif args.expect_session:
+            session_match = re.search(r"(?:^|\s)session=(\S+)", marker_line)
+            actual_session = session_match.group(1) if session_match else "unknown"
+            if actual_session != args.expect_session:
+                failure_reason = (
+                    f"expected the {args.expect_session} session but the guest "
+                    f"reported {actual_session}"
+                )
+                log(failure_reason)
+            else:
+                log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
+                time.sleep(8.0)
         else:
             log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
             time.sleep(8.0)

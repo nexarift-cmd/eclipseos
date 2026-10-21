@@ -106,6 +106,24 @@ Acceptance:
 - no Microsoft assets; licence inventory updated;
 - QEMU smoke test still passes.
 
+### Status at the first Plasma ISO
+
+- The first Plasma ISO booted in QEMU UEFI, BIOS and the
+  VirtualBox-storage-profile test. Those runs used Wayland at 1280x800.
+- Virtual machines now preselect Plasma X11 with `systemd-detect-virt`; the
+  build and boot evidence for that change is still being collected.
+- A real VirtualBox boot of a Phase 2 ISO has **not** been recorded yet. The
+  Phase 1 VirtualBox result does not prove Phase 2's Plasma session.
+- 1920x1080 light and dark screenshots have **not** been captured. A QEMU
+  std-VGA EDID experiment at 1920x1080 produced a black framebuffer with only
+  the cursor visible, so that method is rejected and the evidence remains
+  outstanding.
+- Real-hardware Wayland boot has **not** been tested; there is no hardware
+  result to claim.
+
+The exact evidence and limitations are in
+[`evidence/phase2/README.md`](evidence/phase2/README.md).
+
 ## Phase 3 — Installer and installed system
 
 Scope:

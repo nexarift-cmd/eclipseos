@@ -2,9 +2,11 @@
 
 This is the Debian `live-build` tree used by `scripts/build.sh`. It contains
 the **Phase 2** desktop preview: hybrid UEFI/BIOS boot, GRUB/Plymouth branding,
-SDDM autologin as `eclipse`, and a Plasma 6 desktop with Wayland as the default
-session and X11 as the fallback. The Phase 1 LightDM/Openbox session has been
-removed. See [`../docs/roadmap.md`](../docs/roadmap.md) for acceptance status.
+SDDM autologin as `eclipse`, and a Plasma 6 desktop. Physical machines default
+to Wayland; `eclipseos-session.service` selects the Plasma X11 session when
+`systemd-detect-virt --vm` reports a virtual machine, and X11 remains a safe
+static fallback. The Phase 1 LightDM/Openbox session has been removed. See
+[`../docs/roadmap.md`](../docs/roadmap.md) for acceptance status.
 
 ## Layout
 

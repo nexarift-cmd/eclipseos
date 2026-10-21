@@ -49,7 +49,7 @@ and desktop component from scratch is not.
 | Settings | Custom Qt 6 / QML application | Meets the custom-app requirement and integrates with the same Qt stack as Plasma. C++/Qt avoids an extra Python GUI runtime and produces a small, packageable binary. |
 | Update UI | Custom Qt 6 / QML front-end, APT/PolicyKit backend, Discover for app management | Friendly update flow while preserving Debian's signed APT trust chain. |
 | File manager / store / apps | Dolphin, Discover, Konsole, Kate, Gwenview, Haruna, KCalc, Spectacle, Firefox ESR | Reused and re-themed where the application does not need a custom implementation. Replacing them would add risk without improving the core OS. |
-| Display server default | Wayland, with an X11 fallback session | Wayland is the modern default; X11 remains selectable for troublesome GPUs and VirtualBox configurations. |
+| Display server default | Wayland on physical machines; automatic Plasma X11 in virtual machines, with an X11 session always selectable | Wayland is the modern default on hardware. `eclipseos-session.service` uses `systemd-detect-virt --vm` before SDDM starts and selects X11 for VMs, where virtual display adapters have produced black Wayland screens. X11 also remains selectable for older GPUs. |
 | Versioning | `eclipse-YY.MM`; first release `eclipse-26.10` | Unambiguous release cadence and image naming. |
 | Project licence | GPL-3.0-or-later for EclipseOS code | Compatible with the KDE ecosystem and keeps the product layer free software. |
 
@@ -97,9 +97,10 @@ check. They will be pinned to a Debian snapshot before the release build.
    ISO or USB device.
 4. Plymouth displays the original EclipseOS boot splash while the root
    overlay is assembled.
-5. systemd reaches the graphical target. Phase 1 starts LightDM, which logs
-   the live user in automatically and launches the EclipseOS X11/openbox
-   session. Phase 2 replaces this with SDDM and Plasma.
+5. systemd reaches the graphical target. `eclipseos-session.service` selects
+   Wayland on physical hardware or X11 when `systemd-detect-virt` reports a
+   VM, then SDDM autologins the live user into that Plasma session. The
+   static SDDM fallback is X11.
 6. The live session runs as `eclipse` (no password) so the desktop is
    immediately usable. No installed-system credential exists yet.
 7. Phase 3 adds an "Install EclipseOS" launcher that starts Calamares through
@@ -226,10 +227,18 @@ from focused customisations:
 
 ### Display server policy
 
-The default session is Plasma Wayland. An "EclipseOS on X11" session is
-installed and documented for VirtualBox and older GPUs. A boot-time fallback
-service may select X11 when the Wayland session fails repeatedly, but it must
-not hide persistent crashes from the test suite.
+The default session is Plasma Wayland on physical machines. The
+`eclipseos-session.service` oneshot runs before SDDM and calls
+`systemd-detect-virt --vm`. If it reports a virtual machine, the service writes
+a late SDDM drop-in selecting `eclipseos-x11`; otherwise it selects
+`eclipseos-wayland`. The static SDDM configuration keeps X11 as a safe
+fallback if the selector ever fails. An "EclipseOS on X11" session remains in
+the SDDM session menu for older GPUs and manual diagnosis.
+
+This selection is based on the hypervisor, not on a Wayland crash loop. SDDM
+starts the X server before launching an X11 session, so a Wayland session
+cannot safely hand itself over to `startplasma-x11` after a failure. The
+earlier session wrapper therefore no longer claims to do that.
 
 ## 6. Installer design
 

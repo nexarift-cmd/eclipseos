@@ -17,6 +17,8 @@ SYSTEM_UNITS="
 sddm.service
 NetworkManager.service
 systemd-timesyncd.service
+eclipseos-session.service
+eclipseos-theme.service
 eclipseos-bootcheck.service
 "
 

@@ -29,15 +29,22 @@ update experience. The upstream components are credited in
 > built the strict `STRICT_FOSS=1` image with zero non-free firmware packages.
 > See [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md),
 > the [reproduction and fix evidence](docs/evidence/phase1/virtualbox-unattended.md),
-> and the [Phase 1 evidence index](docs/evidence/phase1/README.md). Phase 2
-> has started; the Plasma/SDDM migration is on a separate branch until it
-> boots and passes its gate.
+> and the [Phase 1 evidence index](docs/evidence/phase1/README.md).
+>
+> **Phase 2 is in progress and is not accepted yet.** The first Plasma ISO
+> booted in QEMU UEFI, BIOS and the VirtualBox-storage-profile test at
+> 1280x800, but only on Wayland and only in QEMU. Virtual machines now select
+> the Plasma X11 session automatically with `systemd-detect-virt`; physical
+> machines keep Wayland. The VM-X11 change, a real VirtualBox Phase 2 boot,
+> 1920x1080 light/dark screenshots and the Phase 2 acceptance run are still
+> outstanding. See [`docs/evidence/phase2`](docs/evidence/phase2/README.md)
+> for the exact QEMU/VirtualBox matrix.
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
 | 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | **Complete and accepted at 2048 MiB**; final QEMU UEFI/BIOS + VirtualBox storage-profile pass; VirtualBox EFI/BIOS pass; 4096 MiB recommended but untested here |
-| 2 | Plasma desktop, taskbar, Start menu, themes | In progress on a separate branch until the first Plasma ISO boots |
+| 2 | Plasma desktop, taskbar, Start menu, themes | In progress; first Plasma ISO boots in QEMU at 1280x800, but VM X11 selection, VirtualBox Phase 2 boot and 1920x1080 light/dark evidence are not yet accepted |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
 | 5 | Snap layouts, widgets, search, lock screen polish | Not started |
@@ -68,10 +75,11 @@ Calamares or Debian are our work.
 | Networking, audio, Bluetooth, printing, power | NetworkManager, PipeWire, BlueZ, CUPS, power-profiles-daemon | Reused upstream |
 | Branding | EclipseOS | Original SVG logo, wallpapers, icons and themes; no Microsoft assets |
 
-The Phase 1 live image is intentionally smaller than the target product:
-LightDM + openbox + xterm/feh prove the boot and graphical path. Phase 2
-replaces that session with Plasma and SDDM. The table above describes the
-target product, not the Phase 1 contents.
+The Phase 2 preview now uses SDDM and Plasma 6.3. Physical machines default to
+Plasma Wayland; virtual machines detected by `systemd-detect-virt` use Plasma
+X11 because VMSVGA-style virtual display adapters have produced black Wayland
+screens. The table above describes the target product; Phase 2 visual polish,
+the installer and the remaining applications are not complete yet.
 
 ## Architecture and planning
 

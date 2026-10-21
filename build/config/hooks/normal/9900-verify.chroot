@@ -34,8 +34,12 @@ for file in \
     /etc/plymouth/plymouthd.conf \
     /usr/local/bin/eclipseos-plasma-session \
     /usr/local/bin/eclipseos-welcome \
+    /usr/libexec/eclipseos/eclipseos-session-select \
+    /usr/libexec/eclipseos/eclipseos-theme-boot \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
     /usr/lib/systemd/system/eclipseos-bootcheck.service \
+    /usr/lib/systemd/system/eclipseos-session.service \
+    /usr/lib/systemd/system/eclipseos-theme.service \
     /usr/share/wayland-sessions/eclipseos-wayland.desktop \
     /usr/share/xsessions/eclipseos-x11.desktop \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/metadata.json \
@@ -45,6 +49,7 @@ for file in \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/plasmoidsetupscripts/org.kde.plasma.kickoff.js \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/splash/Splash.qml \
     /usr/share/color-schemes/EclipseOS.colors \
+    /usr/share/color-schemes/EclipseOSLight.colors \
     /usr/share/icons/hicolor/scalable/apps/eclipseos.svg \
     /usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png \
     /usr/share/pixmaps/eclipseos/eclipseos-mark-256.png \
@@ -65,6 +70,8 @@ done
 for file in \
     /usr/local/bin/eclipseos-plasma-session \
     /usr/local/bin/eclipseos-welcome \
+    /usr/libexec/eclipseos/eclipseos-session-select \
+    /usr/libexec/eclipseos/eclipseos-theme-boot \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
     ; do
     [ -x "$file" ] || fail "not executable: $file"
@@ -104,7 +111,7 @@ grep -q 'NetworkManager replaces' /etc/resolv.conf \
 # ---------------------------------------------------------------------------
 # Boot units
 # ---------------------------------------------------------------------------
-for unit in sddm.service NetworkManager.service eclipseos-bootcheck.service; do
+for unit in sddm.service NetworkManager.service eclipseos-session.service eclipseos-theme.service eclipseos-bootcheck.service; do
     [ "$(systemctl is-enabled "$unit" 2>/dev/null || true)" = "enabled" ] \
         || fail "$unit is not enabled"
 done
@@ -133,8 +140,12 @@ fi
 
 grep -qx 'User=eclipse' /etc/sddm.conf.d/50-eclipseos.conf \
     || fail 'SDDM is not configured to autologin the live user'
-grep -qx 'Session=eclipseos-wayland' /etc/sddm.conf.d/50-eclipseos.conf \
-    || fail 'SDDM does not default to the EclipseOS Wayland session'
+grep -qx 'Session=eclipseos-x11' /etc/sddm.conf.d/50-eclipseos.conf \
+    || fail 'SDDM does not retain the safe X11 fallback session'
+grep -q 'systemd-detect-virt --vm --quiet' /usr/libexec/eclipseos/eclipseos-session-select \
+    || fail 'the VM session selector does not use systemd-detect-virt'
+grep -q 'Session=$session' /usr/libexec/eclipseos/eclipseos-session-select \
+    || fail 'the VM session selector does not write the selected SDDM session'
 
 grep -q '^Exec=/usr/local/bin/eclipseos-plasma-session$' /usr/share/wayland-sessions/eclipseos-wayland.desktop \
     || fail 'the Wayland session does not launch the EclipseOS session wrapper'
