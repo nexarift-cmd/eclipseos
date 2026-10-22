@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EclipseOS Start</title>
+<style>
+  :root {
+    color-scheme: dark light;
+    --void: #0b0714;
+    --night: #141020;
+    --surface: #1b1528;
+    --surface-raised: #241c35;
+    --text: #f7f4fb;
+    --muted: #c9c0df;
+    --violet: #6c4dff;
+    --violet-soft: #a78bfa;
+    --amber: #ffb347;
+    --corona: #ffd166;
+    --link: #c9b8ff;
+    --line: rgba(255, 255, 255, 0.12);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --void: #f7f4fb;
+      --night: #ffffff;
+      --surface: #ffffff;
+      --surface-raised: #f0ebfa;
+      --text: #171021;
+      --muted: #5d5470;
+      --violet: #4a2ed1;
+      --violet-soft: #6c4dff;
+      --amber: #9a5b00;
+      --corona: #b66c00;
+      --link: #4a2ed1;
+      --line: rgba(23, 16, 33, 0.14);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    color: var(--text);
+    background:
+      radial-gradient(circle at 50% -20%, rgba(108, 77, 255, 0.30), transparent 45rem),
+      radial-gradient(circle at 90% 110%, rgba(255, 179, 71, 0.12), transparent 35rem),
+      var(--void);
+    font-family: Inter, "Noto Sans", "DejaVu Sans", system-ui, sans-serif;
+  }
+
+  main {
+    width: min(56rem, 100%);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .mark {
+    width: 4.5rem;
+    height: 4.5rem;
+    flex: none;
+  }
+
+  .brand h1 {
+    margin: 0;
+    font-size: clamp(2rem, 5vw, 3.25rem);
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .brand p {
+    margin: 0.55rem 0 0;
+    color: var(--muted);
+    font-size: 1.05rem;
+  }
+
+  .search {
+    display: flex;
+    gap: 0.65rem;
+    margin-bottom: 2rem;
+    padding: 0.45rem;
+    border: 1px solid var(--line);
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.22);
+  }
+
+  .search input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    padding: 0.85rem 1rem;
+    color: var(--text);
+    background: transparent;
+    font: inherit;
+    font-size: 1.05rem;
+  }
+
+  .search input::placeholder { color: var(--muted); }
+
+  .search button {
+    border: 0;
+    border-radius: 0.7rem;
+    padding: 0.8rem 1.25rem;
+    color: #fff;
+    background: var(--violet);
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+  }
+
+  .search button:hover { filter: brightness(1.12); }
+
+  .links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.85rem;
+  }
+
+  .links a {
+    display: block;
+    min-height: 6.5rem;
+    padding: 1.1rem;
+    border: 1px solid var(--line);
+    border-radius: 0.9rem;
+    color: var(--text);
+    background: var(--surface);
+    text-decoration: none;
+    transition: transform 120ms ease, border-color 120ms ease;
+  }
+
+  .links a:hover {
+    transform: translateY(-2px);
+    border-color: var(--violet-soft);
+  }
+
+  .links strong {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text);
+    font-size: 1.02rem;
+  }
+
+  .links span {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  footer {
+    margin-top: 2.5rem;
+    color: var(--muted);
+    font-size: 0.82rem;
+    line-height: 1.6;
+  }
+
+  footer a { color: var(--link); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="EclipseOS mark">
+      <defs>
+        <radialGradient id="corona" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#ffd166"/>
+          <stop offset="70%" stop-color="#ffb347"/>
+          <stop offset="100%" stop-color="#ffb347" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="#6c4dff"/>
+      <circle cx="32" cy="32" r="24" fill="url(#corona)" opacity=".9"/>
+      <circle cx="36" cy="30" r="17" fill="#0b0714"/>
+      <circle cx="36" cy="30" r="14" fill="#141020"/>
+      <path d="M 9 44 A 26 26 0 0 1 55 20" fill="none" stroke="#ffd166"
+            stroke-width="2" stroke-linecap="round" opacity=".85"/>
+    </svg>
+    <div class="brand">
+      <h1>EclipseOS</h1>
+      <p>Your desktop, in a new light.</p>
+    </div>
+  </header>
+
+  <form class="search" action="https://duckduckgo.com/" method="get">
+    <input type="search" name="q" placeholder="Search the web with DuckDuckGo" aria-label="Search the web">
+    <button type="submit">Search</button>
+  </form>
+
+  <section class="links" aria-label="EclipseOS links">
+    <a href="https://github.com/nexarift-cmd/eclipseos">
+      <strong>EclipseOS project</strong>
+      <span>Source code, releases and issue tracker.</span>
+    </a>
+    <a href="https://github.com/nexarift-cmd/eclipseos/tree/main/docs">
+      <strong>Documentation</strong>
+      <span>Build, architecture and licence notes.</span>
+    </a>
+    <a href="https://www.debian.org/">
+      <strong>Debian</strong>
+      <span>The open-source foundation of EclipseOS.</span>
+    </a>
+    <a href="https://kde.org/">
+      <strong>KDE</strong>
+      <span>Plasma, the EclipseOS desktop environment.</span>
+    </a>
+  </section>
+
+  <footer>
+    EclipseOS 26.10 · Debian 13 · Firefox ESR is the unmodified Debian build.
+    <br>Search is provided by DuckDuckGo when you choose to use it; this page
+    itself makes no network requests.
+  </footer>
+</main>
+</body>
+</html>

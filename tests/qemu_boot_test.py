@@ -79,6 +79,16 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def parse_edid(value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"(\d{3,4})x(\d{3,4})", value)
+    if not match:
+        die("--video-edid must look like 1920x1080")
+    width, height = (int(group) for group in match.groups())
+    if not 640 <= width <= 4096 or not 480 <= height <= 4096:
+        die("--video-edid dimensions are outside the supported range")
+    return width, height
+
+
 class Qmp:
     """Tiny QMP client for commands used by this test."""
 
@@ -285,8 +295,18 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     else:
         command += ["-boot", "order=d,menu=off"]
 
+    if args.video_edid:
+        if args.vga != "std":
+            die("--video-edid requires --vga std")
+        edid_width, edid_height = parse_edid(args.video_edid)
+        command += [
+            "-vga", "none",
+            "-device",
+            f"VGA,edid=on,xres={edid_width},yres={edid_height}",
+        ]
+    else:
+        command += ["-vga", args.vga]
     command += [
-        "-vga", args.vga,
         "-display", "none",
         "-serial", f"file:{serial_path}",
         "-monitor", "none",
@@ -344,7 +364,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--expect-session",
-        choices=("wayland", "x11"),
+        choices=("wayland", "x11", "greeter"),
         default=None,
         help="Require the live session named in the boot marker",
     )
@@ -353,6 +373,11 @@ def main() -> int:
         choices=("std", "vmware"),
         default="std",
         help="QEMU VGA adapter (default: std; vmware is VMSVGA-like)",
+    )
+    parser.add_argument(
+        "--video-edid",
+        metavar="WxH",
+        help="Expose a synthetic EDID mode, for example 1920x1080 (std VGA only)",
     )
     parser.add_argument(
         "--optical",
@@ -373,6 +398,11 @@ def main() -> int:
         help="Kernel command line for --direct-kernel (default omits boot=live)",
     )
     parser.add_argument("--outdir", required=True)
+    parser.add_argument(
+        "--close-welcome",
+        action="store_true",
+        help="send Alt+F4 after the marker to close the live welcome terminal before the final screenshot",
+    )
     parser.add_argument(
         "--screenshot-interval",
         type=int,
@@ -510,9 +540,31 @@ def main() -> int:
                 log(failure_reason)
             else:
                 log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
+                if args.close_welcome and qmp is not None:
+                    try:
+                        qmp.command("send-key", {
+                            "keys": [
+                                {"type": "qcode", "data": "alt"},
+                                {"type": "qcode", "data": "f4"},
+                            ]
+                        })
+                        log("Sent Alt+F4 to close the live welcome terminal")
+                    except Exception as exc:
+                        log(f"warning: could not close welcome terminal: {exc}")
                 time.sleep(8.0)
         else:
             log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
+            if args.close_welcome and qmp is not None:
+                try:
+                    qmp.command("send-key", {
+                        "keys": [
+                            {"type": "qcode", "data": "alt"},
+                            {"type": "qcode", "data": "f4"},
+                        ]
+                    })
+                    log("Sent Alt+F4 to close the live welcome terminal")
+                except Exception as exc:
+                    log(f"warning: could not close welcome terminal: {exc}")
             time.sleep(8.0)
 
         if qmp is None:
@@ -542,6 +594,18 @@ def main() -> int:
                 if not failure_reason and not screenshot_result["meaningful"]:
                     failure_reason = "framebuffer screenshot is blank or nearly blank"
                     log(failure_reason)
+                if not failure_reason and args.video_edid:
+                    expected_size = parse_edid(args.video_edid)
+                    actual_size = (
+                        screenshot_result["width"],
+                        screenshot_result["height"],
+                    )
+                    if actual_size != expected_size:
+                        failure_reason = (
+                            f"EDID requested {expected_size[0]}x{expected_size[1]} "
+                            f"but framebuffer is {actual_size[0]}x{actual_size[1]}"
+                        )
+                        log(failure_reason)
             except Exception as exc:
                 if not failure_reason:
                     failure_reason = f"screenshot failed: {exc}"
@@ -575,8 +639,10 @@ def main() -> int:
         "firmware": args.firmware,
         "machine": args.machine,
         "vga": args.vga,
+        "video_edid": args.video_edid,
         "optical": args.optical,
         "boot_mode": "direct-kernel" if args.direct_kernel else "iso",
+        "close_welcome": args.close_welcome,
         "kernel": str(Path(args.kernel).resolve()) if args.direct_kernel else None,
         "initrd": str(Path(args.initrd).resolve()) if args.direct_kernel else None,
         "kernel_append": args.kernel_append if args.direct_kernel else None,

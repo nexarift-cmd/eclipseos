@@ -32,6 +32,44 @@ if ! grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
 fi
 
 deadline=$(( $(date +%s) + SESSION_TIMEOUT ))
+
+# The SDDM branding evidence boot skips autologin. In that mode the greeter,
+# not plasmashell, is the successful end state.
+if grep -qw 'eclipseos.autologin=off' /proc/cmdline 2>/dev/null; then
+    greeter=""
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if pgrep -f 'sddm-greeter' >/dev/null 2>&1; then
+            greeter=1
+            break
+        fi
+        sleep 1
+    done
+    if [ -z "$greeter" ]; then
+        emit "$FAIL_PREFIX stage=greeter reason=sddm-greeter-not-running"
+        exit 1
+    fi
+    sleep 4
+    failed_units="$(systemctl --failed --no-legend --plain 2>/dev/null | grep -c . || true)"
+    failed_units="${failed_units:-0}"
+    theme="dark"
+    if [ -r /run/eclipseos-theme ]; then
+        theme="$(cat /run/eclipseos-theme 2>/dev/null || printf dark)"
+    fi
+    virt="$(systemd-detect-virt 2>/dev/null || true)"
+    virt="${virt:-none}"
+    selection="unknown"
+    if [ -r /run/eclipseos-session ]; then
+        selection="$(cat /run/eclipseos-session 2>/dev/null || printf unknown)"
+    fi
+    vm_tuning=0
+    [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
+    emit "$MARKER_PREFIX stage=greeter session=greeter theme=${theme} virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+    if [ "$failed_units" -eq 0 ]; then
+        exit 0
+    fi
+    exit 1
+fi
+
 session=""
 while [ "$(date +%s)" -lt "$deadline" ]; do
     if pgrep -x plasmashell >/dev/null 2>&1; then
@@ -64,8 +102,10 @@ selection="unknown"
 if [ -r /run/eclipseos-session ]; then
     selection="$(cat /run/eclipseos-session 2>/dev/null || printf unknown)"
 fi
+vm_tuning=0
+[ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} virt=${virt} selection=${selection} failed_units=${failed_units}"
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.

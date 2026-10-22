@@ -26,14 +26,26 @@ all three gates: UEFI, BIOS, and the VirtualBox storage profile, the latter at
 [`../docs/evidence/phase1`](../docs/evidence/phase1/README.md).
 
 The Phase 2 image replaces that session with SDDM and Plasma. Its marker
-reports `session=wayland` or `session=x11`, plus `theme=`, `virt=` and
-`selection=`. QEMU runs are virtual machines, so the new
-`eclipseos-session.service` should make them report
-`session=x11 virt=qemu selection=eclipseos-x11` (the exact `virt` value is
-provided by `systemd-detect-virt`). A Phase 2 image is not accepted until the
-marker and a non-blank 1920x1080 framebuffer are captured from the Plasma
-desktop. The first QEMU runs captured 1280x800 only; they are historical
-evidence, not Phase 2 acceptance.
+reports `session=wayland` or `session=x11`, plus `theme=`, `virt=`,
+`selection=`, `vm_tuning=` and `failed_units=`. QEMU runs are virtual
+machines, so `eclipseos-session.service` should make them report
+`session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value is
+provided by `systemd-detect-virt`; KVM is expected on the CI runner.
+
+Run 39693031395 (commit `78474f5`) passed the UEFI, BIOS and
+VirtualBox-storage-profile gates with
+`ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark virt=kvm selection=eclipseos-x11 failed_units=0`
+and 1280x800 screenshots. A real VirtualBox 2048 MiB boot of that ISO also
+reached Plasma. Neither run proves the new browser, pinned-launcher, theme
+switch, VM tuning or SDDM greeter changes; those require the next build. A
+Phase 2 image is not accepted until the marker, the branded greeter and
+non-blank 1920x1080 light/dark framebuffer captures have been inspected.
+
+`eclipseos-bootcheck` reports `stage=greeter session=greeter` instead of
+`stage=desktop` when the kernel command line contains
+`eclipseos.autologin=off`. In that mode it waits for `sddm-greeter`, not
+`plasmashell`, and the SDDM drop-in leaves `User=` empty. This is a test-only
+path for greeter evidence; normal live boots still autologin.
 
 ### VirtualBox storage-profile coverage
 
@@ -51,12 +63,20 @@ on the command line and is expected to stop in the initramfs. It documents the
 rewritten-menu failure mode; it is not a release gate. The positive boot path
 and the prevention of VISO creation are the regression checks.
 
-`make test-theme-light` boots the extracted kernel with `boot=live` plus
-`eclipseos.theme=light`. It is a manual evidence target, not yet part of
-`make test-all`, because light-theme acceptance evidence is still being
-collected. The screen resolution remains whatever the QEMU display advertises;
-a std-VGA EDID override at 1920x1080 was tested and rejected after it produced
-a black framebuffer with only a cursor.
+`make test-theme-light` boots the extracted kernel with `boot=live`, the
+`eclipseos.theme=light` one-shot selector and a QEMU std-VGA EDID mode of
+1920x1080. `make test-1920-dark` captures the default dark desktop at the same
+resolution. Both close the welcome terminal with a QMP Alt+F4 before the final
+screenshot so the taskbar and Start button are visible. They are manual
+evidence targets, not yet part of `make test-all`, until the captures have
+been visually inspected. The earlier Wayland EDID attempt produced a black
+framebuffer with only a cursor; this X11 path is a new, separate test.
+
+`make test-sddm` boots with `eclipseos.autologin=off`, waits for the SDDM
+greeter and captures the branded login screen at 1920x1080. It is also a
+manual evidence target, not a release gate yet. A successful greeter marker
+does not prove that a real user can log in; that still requires an interactive
+check or a later automated login test.
 
 ### Serial marker contract
 
@@ -64,8 +84,12 @@ The live image's `eclipseos-bootcheck` service must write a line like this to
 `/dev/ttyS0` once the session is actually usable:
 
 ```text
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark virt=qemu selection=eclipseos-x11 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
 ```
+
+The greeter path writes a similar line with `stage=greeter session=greeter`.
+`vm_tuning=1` means `eclipseos-vm-tuning.service` detected a VM and applied
+the compositor settings; `0` is expected on physical hardware.
 
 If the session does not start, it writes:
 
@@ -90,6 +114,12 @@ writes them as `boot-NN-<seconds>s.png`, then saves the final frame as
 `screenshot.png` on success or `failure-screenshot.png` on failure. The PPM
 intermediate is removed. All captures are diagnostic evidence and are uploaded
 by CI.
+
+The optional `--video-edid WxH` flag replaces QEMU's default VGA adapter with
+`-device VGA,edid=on,xres=W,yres=H` so a std-VGA guest receives a synthetic
+native mode. It is test-only and never changes the ISO. A 1920x1080 PNG is
+only accepted as 1920x1080 evidence if the QEMU result JSON and the PNG
+dimensions agree; do not upscale a smaller capture.
 
 QEMU tests use TCG when KVM is unavailable. They are slower but still valid;
 timing assertions must account for that.

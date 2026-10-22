@@ -23,6 +23,10 @@ for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot \
             "$ROOT_DIR"/build/config/hooks/normal/*.binary; do
     sh -n "$hook" || fail "sh syntax: ${hook#"$ROOT_DIR"/}"
 done
+for script in "$ROOT_DIR"/build/config/includes.chroot/usr/local/bin/eclipseos-* \
+              "$ROOT_DIR"/build/config/includes.chroot/usr/libexec/eclipseos/*; do
+    sh -n "$script" || fail "sh syntax: ${script#"$ROOT_DIR"/}"
+done
 printf '  ok\n'
 
 if command -v shellcheck >/dev/null 2>&1; then
@@ -31,6 +35,10 @@ if command -v shellcheck >/dev/null 2>&1; then
     for hook in "$ROOT_DIR"/build/config/hooks/normal/*.chroot \
                 "$ROOT_DIR"/build/config/hooks/normal/*.binary; do
         shellcheck -s sh "$hook"
+    done
+    for script in "$ROOT_DIR"/build/config/includes.chroot/usr/local/bin/eclipseos-* \
+                  "$ROOT_DIR"/build/config/includes.chroot/usr/libexec/eclipseos/*; do
+        shellcheck -s sh "$script"
     done
     printf '  ok\n'
 else
@@ -46,6 +54,11 @@ printf '  ok\n'
 printf 'Brand tokens\n'
 "$PYTHON" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' \
     "$ROOT_DIR/branding/tokens.json"
+printf '  ok\n'
+
+printf 'Firefox policy JSON\n'
+"$PYTHON" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' \
+    "$ROOT_DIR/build/config/includes.chroot/usr/share/firefox-esr/distribution/policies.json"
 printf '  ok\n'
 
 printf 'Firmware allowlist\n'
@@ -95,7 +108,9 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
     desktop-file-validate \
         "$ROOT_DIR/build/config/includes.chroot/usr/share/wayland-sessions/eclipseos-wayland.desktop" \
         "$ROOT_DIR/build/config/includes.chroot/usr/share/xsessions/eclipseos-x11.desktop" \
-        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.welcome.desktop"
+        "$ROOT_DIR/build/config/includes.chroot/usr/share/applications/org.eclipseos.theme-toggle.desktop" \
+        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.welcome.desktop" \
+        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.theme-apply.desktop"
     printf '  ok\n'
 fi
 

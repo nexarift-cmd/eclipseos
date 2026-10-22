@@ -194,6 +194,9 @@ install -D -m 0644 \
     "$ASSET_DIR/eclipseos-wallpaper-1920x1080.png" \
     "$BUILD_DIR/config/includes.chroot/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png"
 install -D -m 0644 \
+    "$ASSET_DIR/eclipseos-wallpaper-light-1920x1080.png" \
+    "$BUILD_DIR/config/includes.chroot/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-light-1920x1080.png"
+install -D -m 0644 \
     "$ASSET_DIR/eclipseos-mark-256.png" \
     "$BUILD_DIR/config/includes.chroot/usr/share/pixmaps/eclipseos/eclipseos-mark-256.png"
 install -D -m 0644 \

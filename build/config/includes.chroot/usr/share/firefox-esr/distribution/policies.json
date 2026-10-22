@@ -1,0 +1,37 @@
+{
+  "policies": {
+    "DisableTelemetry": true,
+    "DontCheckDefaultBrowser": true,
+    "Homepage": {
+      "URL": "file:///usr/share/eclipseos/browser/home.html",
+      "StartPage": "homepage",
+      "Locked": false
+    },
+    "DisplayBookmarksToolbar": "always",
+    "NoDefaultBookmarks": true,
+    "Bookmarks": [
+      {
+        "Title": "EclipseOS project",
+        "URL": "https://github.com/nexarift-cmd/eclipseos",
+        "Placement": "toolbar"
+      },
+      {
+        "Title": "EclipseOS documentation",
+        "URL": "https://github.com/nexarift-cmd/eclipseos/tree/main/docs",
+        "Placement": "toolbar"
+      },
+      {
+        "Title": "Debian",
+        "URL": "https://www.debian.org/",
+        "Placement": "toolbar"
+      },
+      {
+        "Title": "KDE",
+        "URL": "https://kde.org/",
+        "Placement": "toolbar"
+      }
+    ],
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": ""
+  }
+}

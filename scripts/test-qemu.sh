@@ -16,6 +16,7 @@ MEMORY=4096
 CPUS=2
 MACHINE="q35"
 VGA="std"
+VIDEO_EDID=""
 OPTICAL="auto"
 EXPECT_SESSION="x11"
 DIRECT_KERNEL=0
@@ -23,6 +24,7 @@ DIRECT_LIVE=0
 KERNEL=""
 INITRD=""
 KERNEL_APPEND_EXTRA=""
+CLOSE_WELCOME=0
 KERNEL_APPEND="console=tty0 console=ttyS0,115200n8 quiet"
 OUTDIR=""
 BOOT_TMP=""
@@ -50,8 +52,10 @@ Options:
   --cpus N              Guest vCPUs (default: 2)
   --machine q35|pc      QEMU machine (default: q35; pc for VirtualBox-like IDE)
   --vga std|vmware      VGA adapter (default: std; vmware is VMSVGA-like)
+  --video-edid WxH      Expose a synthetic EDID mode (for example 1920x1080;
+                        requires --vga std; test-only display evidence)
   --optical auto|ide    Optical attachment (default: auto; ide uses pc secondary master)
-  --expect-session x11|wayland
+  --expect-session x11|wayland|greeter
                         Session required in the boot marker (default: x11,
                         because every QEMU target is a virtual machine)
   --direct-kernel-no-live
@@ -61,6 +65,9 @@ Options:
                         arguments. Used for the light-theme evidence boot.
   --kernel-append-extra TEXT
                         Append TEXT to the direct-kernel command line.
+  --close-welcome       Send Alt+F4 after the boot marker so the final
+                        screenshot shows the desktop rather than the welcome
+                        terminal.
   --outdir PATH         Output directory (default: tests/out/<timestamp>-<firmware>-...)
   -h, --help            Show this help
 EOF
@@ -75,11 +82,13 @@ while [[ $# -gt 0 ]]; do
         --cpus) CPUS="${2:?--cpus requires a number}"; shift 2 ;;
         --machine) MACHINE="${2:?--machine requires q35 or pc}"; shift 2 ;;
         --vga) VGA="${2:?--vga requires std or vmware}"; shift 2 ;;
+        --video-edid) VIDEO_EDID="${2:?--video-edid requires WxH}"; shift 2 ;;
         --optical) OPTICAL="${2:?--optical requires auto or ide}"; shift 2 ;;
         --expect-session) EXPECT_SESSION="${2:?--expect-session requires x11 or wayland}"; shift 2 ;;
         --direct-kernel-no-live) DIRECT_KERNEL=1; DIRECT_LIVE=0; shift ;;
         --direct-kernel-live) DIRECT_KERNEL=1; DIRECT_LIVE=1; shift ;;
         --kernel-append-extra) KERNEL_APPEND_EXTRA="${2:?--kernel-append-extra requires text}"; shift 2 ;;
+        --close-welcome) CLOSE_WELCOME=1; shift ;;
         --outdir) OUTDIR="${2:?--outdir requires a path}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
@@ -103,12 +112,22 @@ case "$OPTICAL" in
     *) printf 'error: --optical must be auto or ide\n' >&2; exit 2 ;;
 esac
 case "$EXPECT_SESSION" in
-    x11|wayland) ;;
-    *) printf 'error: --expect-session must be x11 or wayland\n' >&2; exit 2 ;;
+    x11|wayland|greeter) ;;
+    *) printf 'error: --expect-session must be x11, wayland or greeter\n' >&2; exit 2 ;;
 esac
 if [[ "$OPTICAL" == "ide" && "$MACHINE" != "pc" ]]; then
     printf 'error: --optical ide requires --machine pc\n' >&2
     exit 2
+fi
+if [[ -n "$VIDEO_EDID" ]]; then
+    if [[ ! "$VIDEO_EDID" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]]; then
+        printf 'error: --video-edid must look like 1920x1080\n' >&2
+        exit 2
+    fi
+    if [[ "$VGA" != "std" ]]; then
+        printf 'error: --video-edid requires --vga std\n' >&2
+        exit 2
+    fi
 fi
 
 if [[ ! -f "$ISO" ]]; then
@@ -203,6 +222,9 @@ if [[ -z "$OUTDIR" ]]; then
             MODE_SUFFIX="-direct"
         fi
     fi
+    if [[ -n "$VIDEO_EDID" ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-edid-${VIDEO_EDID}"
+    fi
     OUTDIR="$ROOT_DIR/tests/out/$(date -u '+%Y%m%dT%H%M%SZ')-${FIRMWARE}-${MACHINE}-${OPTICAL}-${VGA}${MODE_SUFFIX}"
 fi
 mkdir -p "$OUTDIR"
@@ -219,6 +241,12 @@ python_args=(
     --expect-session "$EXPECT_SESSION"
     --outdir "$OUTDIR"
 )
+if [[ -n "$VIDEO_EDID" ]]; then
+    python_args+=(--video-edid "$VIDEO_EDID")
+fi
+if [[ "$CLOSE_WELCOME" -eq 1 ]]; then
+    python_args+=(--close-welcome)
+fi
 if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
     python_args+=(
         --direct-kernel

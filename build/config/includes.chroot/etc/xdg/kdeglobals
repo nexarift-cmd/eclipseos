@@ -1,10 +1,10 @@
 [KDE]
 LookAndFeelPackage=org.eclipseos.desktop
-ColorScheme=EclipseOS
 SingleClick=false
 AnimationDurationFactor=1
 
 [General]
+ColorScheme=EclipseOS
 font=Inter,10,-1,5,50,0,0,0,0,0
 fixed=Hack,10,-1,5,50,0,0,0,0,0
 menuFont=Inter,10,-1,5,50,0,0,0,0,0

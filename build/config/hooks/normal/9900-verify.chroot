@@ -31,17 +31,27 @@ for file in \
     /etc/xdg/kscreenlockerrc \
     /etc/xdg/kwalletrc \
     /etc/xdg/autostart/org.eclipseos.welcome.desktop \
+    /etc/xdg/autostart/org.eclipseos.theme-apply.desktop \
     /etc/plymouth/plymouthd.conf \
+    /etc/firefox-esr/firefox-esr.js \
     /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-session-select \
     /usr/libexec/eclipseos/eclipseos-theme-boot \
+    /usr/libexec/eclipseos/eclipseos-vm-tuning \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
     /usr/lib/systemd/system/eclipseos-bootcheck.service \
     /usr/lib/systemd/system/eclipseos-session.service \
     /usr/lib/systemd/system/eclipseos-theme.service \
+    /usr/lib/systemd/system/eclipseos-vm-tuning.service \
+    /usr/share/applications/org.eclipseos.theme-toggle.desktop \
     /usr/share/wayland-sessions/eclipseos-wayland.desktop \
     /usr/share/xsessions/eclipseos-x11.desktop \
+    /usr/share/eclipseos/browser/home.html \
+    /usr/share/firefox-esr/distribution/policies.json \
+    /usr/share/sddm/themes/eclipseos/Main.qml \
+    /usr/share/sddm/themes/eclipseos/theme.conf \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/metadata.json \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/defaults \
     /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/layouts/org.kde.plasma.desktop-layout.js \
@@ -52,6 +62,7 @@ for file in \
     /usr/share/color-schemes/EclipseOSLight.colors \
     /usr/share/icons/hicolor/scalable/apps/eclipseos.svg \
     /usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png \
+    /usr/share/backgrounds/eclipseos/eclipseos-wallpaper-light-1920x1080.png \
     /usr/share/pixmaps/eclipseos/eclipseos-mark-256.png \
     /usr/share/plymouth/themes/eclipseos/eclipseos.plymouth \
     /usr/share/plymouth/themes/eclipseos/eclipseos.script \
@@ -69,9 +80,11 @@ done
 
 for file in \
     /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-session-select \
     /usr/libexec/eclipseos/eclipseos-theme-boot \
+    /usr/libexec/eclipseos/eclipseos-vm-tuning \
     /usr/libexec/eclipseos/eclipseos-bootcheck \
     ; do
     [ -x "$file" ] || fail "not executable: $file"
@@ -111,7 +124,7 @@ grep -q 'NetworkManager replaces' /etc/resolv.conf \
 # ---------------------------------------------------------------------------
 # Boot units
 # ---------------------------------------------------------------------------
-for unit in sddm.service NetworkManager.service eclipseos-session.service eclipseos-theme.service eclipseos-bootcheck.service; do
+for unit in sddm.service NetworkManager.service eclipseos-session.service eclipseos-theme.service eclipseos-vm-tuning.service eclipseos-bootcheck.service; do
     [ "$(systemctl is-enabled "$unit" 2>/dev/null || true)" = "enabled" ] \
         || fail "$unit is not enabled"
 done
@@ -125,11 +138,20 @@ grep -qx 'Theme=eclipseos' /etc/plymouth/plymouthd.conf \
 # ---------------------------------------------------------------------------
 # Plasma session
 # ---------------------------------------------------------------------------
-for package in plasma-desktop plasma-workspace sddm kwin-x11; do
+for package in plasma-desktop plasma-workspace sddm kwin-x11 firefox-esr; do
     if ! dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then
         fail "$package is not installed; the Phase 2 desktop is incomplete"
     fi
 done
+
+[ -x /usr/lib/firefox-esr/firefox-esr ] \
+    || fail 'the Debian Firefox ESR binary is missing'
+[ -f /usr/share/applications/firefox-esr.desktop ] \
+    || fail 'the Firefox ESR desktop entry is missing'
+grep -q 'eclipseos/browser/home.html' /etc/firefox-esr/firefox-esr.js \
+    || fail 'Firefox ESR is not configured for the EclipseOS start page'
+grep -q '"Bookmarks"' /usr/share/firefox-esr/distribution/policies.json \
+    || fail 'the Firefox ESR EclipseOS policy file is incomplete'
 
 if dpkg-query -W -f='${db:Status-Abbrev}' lightdm 2>/dev/null | grep -q '^ii'; then
     fail 'lightdm is still installed; SDDM must be the only display manager'
@@ -158,5 +180,11 @@ grep -qx 'ColorScheme=EclipseOS' /etc/xdg/kdeglobals \
     || fail 'the EclipseOS colour scheme is not the system default'
 grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /home/eclipse/.config/kdeglobals \
     || fail 'the live user profile does not default to the EclipseOS look and feel'
+grep -qx 'Current=eclipseos' /etc/sddm.conf.d/50-eclipseos.conf \
+    || fail 'SDDM is not using the EclipseOS greeter theme'
+grep -qx 'showlogo=shown' /usr/share/sddm/themes/eclipseos/theme.conf \
+    || fail 'the EclipseOS SDDM theme does not show the EclipseOS mark'
+grep -q 'eclipseos-wallpaper-1920x1080.png' /usr/share/sddm/themes/eclipseos/theme.conf \
+    || fail 'the EclipseOS SDDM theme does not use the EclipseOS wallpaper'
 
 printf '9900-verify: all Phase 2 checks passed\n'

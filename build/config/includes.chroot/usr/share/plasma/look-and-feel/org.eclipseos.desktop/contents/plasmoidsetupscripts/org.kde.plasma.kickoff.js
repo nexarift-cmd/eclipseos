@@ -5,6 +5,12 @@
 applet.currentConfigGroup = ["General"];
 applet.writeConfig("icon", "eclipseos");
 applet.writeConfig("favoritesPortedToKAstats", false);
-applet.writeConfig("favorites",
-    "org.kde.dolphin.desktop,org.kde.konsole.desktop,org.kde.kate.desktop,systemsettings.desktop,org.kde.kinfocenter.desktop");
+applet.writeConfig("favorites", [
+    "firefox-esr.desktop",
+    "org.kde.dolphin.desktop",
+    "org.kde.konsole.desktop",
+    "org.kde.kate.desktop",
+    "systemsettings.desktop",
+    "org.kde.kinfocenter.desktop"
+]);
 applet.currentConfigGroup = [];

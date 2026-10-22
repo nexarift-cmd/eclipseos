@@ -24,8 +24,18 @@ if systemd-detect-virt --vm --quiet; then
     reason="virtual-machine:${virt:-unknown}"
 fi
 
+# The SDDM greeter evidence boot disables autologin with
+# eclipseos.autologin=off. An empty late User= value overrides the static
+# live-user default, so SDDM shows the branded greeter instead of logging in.
+autologin_user=eclipse
+if grep -qw 'eclipseos.autologin=off' /proc/cmdline 2>/dev/null; then
+    autologin_user=""
+    reason="$reason;greeter-test"
+fi
+
 cat > /etc/sddm.conf.d/zz-eclipseos-session.conf <<EOF
 [Autologin]
+User=$autologin_user
 Session=$session
 EOF
 chmod 0644 /etc/sddm.conf.d/zz-eclipseos-session.conf

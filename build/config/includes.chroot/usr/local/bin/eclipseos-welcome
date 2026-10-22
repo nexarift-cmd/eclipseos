@@ -26,7 +26,7 @@ exec konsole \
         printf "\n"
         printf "  EclipseOS 26.10 live image\n"
         printf "  User: eclipse (no password), passwordless sudo\n"
-        printf "  Session: Plasma 6 - Wayland default, X11 fallback\n"
+        printf "  Session: Plasma 6 - Wayland on hardware, X11 in VMs\n"
         printf "  Installer: arrives in Phase 3\n\n"
         exec sh -i
     '

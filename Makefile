@@ -11,7 +11,7 @@ SHA256 := $(ISO).sha256
 VM_NAME ?= EclipseOS-$(VERSION)
 VM_DIR ?= $(HOME)/VirtualBox VMs
 
-.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-vbox-uefi test-vbox-unattended test-all test-vm clean distclean
+.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-vbox-uefi test-vbox-unattended test-theme-light test-1920-dark test-sddm test-all test-vm clean distclean
 
 all: iso
 
@@ -31,7 +31,9 @@ help:
 	  '  make test-bios   Boot-test the ISO in QEMU with legacy BIOS' \
 	  '  make test-vbox-uefi  UEFI + pc machine + IDE optical + standard VGA, 2048 MiB' \
 	  '  make test-vbox-unattended  Manual negative control: no boot=live on the command line' \
-	  '  make test-theme-light  Manual light-theme boot + screenshot evidence' \
+	  '  make test-theme-light  Light-theme boot + 1920x1080 screenshot evidence' \
+	  '  make test-1920-dark  Dark desktop + 1920x1080 screenshot evidence' \
+	  '  make test-sddm   Branded SDDM greeter screenshot (no autologin)' \
 	  '  make test-all    Run all QEMU boot tests' \
 	  '  make test-vm     Create and start a VirtualBox VM (VBoxManage required)' \
 	  '  make clean       Remove build output and generated assets' \
@@ -94,15 +96,37 @@ test-vbox-unattended:
 		--direct-kernel-no-live \
 		--iso "$(ISO)"
 
-# Light-theme evidence boot. The extracted kernel is passed boot=live plus the
-# EclipseOS theme selector, so the normal live boot path runs and the boot
-# checker reports theme=light. It is not in test-all yet: Phase 2 light-theme
-# evidence is still being collected and is not claimed as accepted.
+# 1920x1080 evidence boots. The synthetic EDID is a QEMU-only display hint;
+# it does not change the ISO or claim a real-hardware/VirtualBox mode. The
+# light boot uses the extracted kernel with boot=live and eclipseos.theme=light
+# so the normal live path and boot checker still run. Neither target is in
+# test-all until the evidence has been visually inspected.
 test-theme-light:
 	@./scripts/test-qemu.sh \
 		--firmware bios \
 		--direct-kernel-live \
+		--video-edid 1920x1080 \
 		--kernel-append-extra "eclipseos.theme=light" \
+		--close-welcome \
+		--iso "$(ISO)"
+
+test-1920-dark:
+	@./scripts/test-qemu.sh \
+		--firmware uefi \
+		--video-edid 1920x1080 \
+		--close-welcome \
+		--iso "$(ISO)"
+
+# SDDM branding evidence. eclipseos.autologin=off overrides the live-user
+# autologin drop-in, and eclipseos-bootcheck waits for sddm-greeter instead of
+# plasmashell so the screenshot is the login screen, not a desktop race.
+test-sddm:
+	@./scripts/test-qemu.sh \
+		--firmware uefi \
+		--direct-kernel-live \
+		--video-edid 1920x1080 \
+		--kernel-append-extra "eclipseos.autologin=off" \
+		--expect-session greeter \
 		--iso "$(ISO)"
 
 test-all: test-uefi test-bios test-vbox-uefi

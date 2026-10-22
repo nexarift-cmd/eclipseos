@@ -7,7 +7,7 @@ Wants=display-manager.service
 Type=oneshot
 ExecStart=/usr/libexec/eclipseos/eclipseos-bootcheck
 RemainAfterExit=yes
-TimeoutStartSec=180
+TimeoutStartSec=300
 StandardOutput=journal
 StandardError=journal
 

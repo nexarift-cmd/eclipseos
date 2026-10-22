@@ -75,9 +75,11 @@ visudo -c >/dev/null || fail '/etc/sudoers is invalid after the live drop-in'
 # image that still boots.
 for script in \
     /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-session-select \
     /usr/libexec/eclipseos/eclipseos-theme-boot \
+    /usr/libexec/eclipseos/eclipseos-vm-tuning \
     /usr/libexec/eclipseos/eclipseos-bootcheck; do
     [ -f "$script" ] || fail "missing session executable: $script"
     chmod 0755 "$script"

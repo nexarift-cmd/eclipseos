@@ -31,7 +31,11 @@ xdg-desktop-portal-kde
 
 # Session applications used by the default taskbar, Start menu and welcome
 # window. Keep this list small: the full KDE application set belongs in a
-# later application phase, not in the desktop shell itself.
+# later application phase, not in the desktop shell itself. Firefox ESR is the
+# Debian main build (MPL-2.0); EclipseOS only supplies a local start page and
+# unprivileged default preferences, without renaming or repackaging Mozilla's
+# product.
+firefox-esr
 dolphin
 konsole
 kate

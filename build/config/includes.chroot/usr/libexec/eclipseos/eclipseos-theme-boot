@@ -2,13 +2,19 @@
 #
 # Select the EclipseOS live colour scheme before SDDM starts.
 #
-# Normal boots stay on the dark EclipseOS scheme. A test or recovery boot can
-# pass eclipseos.theme=light on the kernel command line; this is deliberately
-# a one-shot live-image selection, not a persistent setting. The user can
-# change the scheme from Plasma System Settings after login.
+# A normal boot uses the saved live-user choice, or EclipseOS dark when no
+# choice exists. The kernel command line can override it for one boot with
+# eclipseos.theme=light or eclipseos.theme=dark; that override is deliberately
+# not persisted, so the next boot returns to the user's saved choice.
+#
+# The user can switch at runtime with eclipseos-theme (also in the Start
+# menu). This service runs before Plasma, so it updates kdeglobals directly
+# rather than using plasma-apply-colorscheme, which needs a session bus.
 set -eu
 
-theme=dark
+theme=""
+# The kernel command line is whitespace-separated; word splitting is intended.
+# shellcheck disable=SC2013
 for argument in $(cat /proc/cmdline); do
     case "$argument" in
         eclipseos.theme=light) theme=light ;;
@@ -16,16 +22,27 @@ for argument in $(cat /proc/cmdline); do
     esac
 done
 
-printf '%s\n' "$theme" > /run/eclipseos-theme
-
-if [ "$theme" != "light" ]; then
-    exit 0
+state=/home/eclipse/.config/eclipseos/theme
+if [ -z "$theme" ] && [ -r "$state" ]; then
+    saved="$(cat "$state" 2>/dev/null || true)"
+    case "$saved" in
+        light|dark) theme="$saved" ;;
+    esac
 fi
+theme="${theme:-dark}"
+
+printf '%s\n' "$theme" > /run/eclipseos-theme
 
 config=/home/eclipse/.config/kdeglobals
 [ -f "$config" ] || exit 0
 
-sed -i 's/^ColorScheme=.*/ColorScheme=EclipseOSLight/' "$config"
-grep -qx 'ColorScheme=EclipseOSLight' "$config" \
-    || { printf 'eclipseos-theme: could not select the light colour scheme\n' >&2; exit 1; }
+if [ "$theme" = "light" ]; then
+    scheme=EclipseOSLight
+else
+    scheme=EclipseOS
+fi
+
+sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+grep -qx "ColorScheme=$scheme" "$config" \
+    || { printf 'eclipseos-theme: could not select the %s colour scheme\n' "$theme" >&2; exit 1; }
 chown eclipse:eclipse "$config"

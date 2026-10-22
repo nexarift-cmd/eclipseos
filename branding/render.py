@@ -408,6 +408,50 @@ def render_wallpaper(colors: dict, out: Path) -> None:
     canvas.write_png(out / "eclipseos-wallpaper-1920x1080.png")
 
 
+def render_light_wallpaper(colors: dict, out: Path) -> None:
+    """A daylight counterpart to the default wallpaper.
+
+    The light variant keeps the same occluded-sun composition but uses the
+    light surface tokens, a soft violet/amber wash and the dark eclipse disc.
+    It is deliberately star-free: the motif should read cleanly on a bright
+    desktop without looking like a dark theme with inverted colours.
+    """
+    width, height = WALLPAPER_SIZE
+    canvas = render_background(
+        width,
+        height,
+        parse_hex(colors["surfaceLight"]),
+        parse_hex(colors["surfaceRaisedLight"]),
+        [
+            (0.50, 0.38, 0.68, parse_hex(colors["violetSoft"]), 0.20),
+            (0.50, 0.40, 0.30, parse_hex(colors["violet"]), 0.06),
+            (0.82, 0.80, 0.42, parse_hex(colors["amber"]), 0.10),
+            (0.18, 0.88, 0.35, parse_hex(colors["corona"]), 0.05),
+        ],
+        vignette=0.10,
+    )
+
+    cx = width * 0.5
+    cy = height * 0.44
+    radius = height * 0.27
+
+    draw_arc(canvas, cx, cy, radius * 1.48, radius * 1.49,
+             math.radians(-35.0), math.radians(205.0),
+             parse_hex(colors["violet"]), 0.14, 0.9)
+    draw_arc(canvas, cx, cy, radius * 1.72, radius * 1.725,
+             math.radians(80.0), math.radians(260.0),
+             parse_hex(colors["amber"]), 0.10, 0.9)
+
+    draw_eclipse(
+        canvas, cx, cy, radius,
+        parse_hex(colors["night"]),
+        parse_hex(colors["corona"]),
+        parse_hex(colors["amber"]),
+        parse_hex(colors["violet"]),
+    )
+    canvas.write_png(out / "eclipseos-wallpaper-light-1920x1080.png")
+
+
 def render_grub_splash(colors: dict, out: Path) -> None:
     width, height = GRUB_SIZE
     canvas = render_background(
@@ -624,6 +668,7 @@ def main() -> int:
     print(f"Rendering EclipseOS assets with tokens {tokens_path}")
 
     render_wallpaper(colors, out)
+    render_light_wallpaper(colors, out)
     render_grub_splash(colors, out)
     render_plymouth_splash(colors, out)
     render_plymouth_progress(colors, out)

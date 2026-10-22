@@ -93,31 +93,43 @@ Scope:
 - centered taskbar with pinned/running apps and tray;
 - Start menu with search and power menu;
 - light/dark toggle and wallpaper picker;
-- desktop icons and context menu;
-- live autologin.
+- branded SDDM greeter and live autologin;
+- Firefox ESR with an EclipseOS start page and bookmarks;
+- desktop icons and context menu.
 
 Acceptance:
 
 - live ISO boots directly to the EclipseOS desktop in VirtualBox UEFI and
   BIOS;
+- the branded SDDM greeter is visible without autologin and accepts a live
+  login;
 - screenshots in light and dark mode at 1920x1080;
 - Start menu opens, searches, launches an app and powers off;
-- taskbar running indicators and tray controls function;
+- taskbar pinned launchers, running indicators and tray controls function;
+- Firefox ESR starts and shows the offline EclipseOS start page;
 - no Microsoft assets; licence inventory updated;
 - QEMU smoke test still passes.
 
-### Status at the first Plasma ISO
+### Status at the current Phase 2 preview
 
-- The first Plasma ISO booted in QEMU UEFI, BIOS and the
-  VirtualBox-storage-profile test. Those runs used Wayland at 1280x800.
-- Virtual machines now preselect Plasma X11 with `systemd-detect-virt`; the
-  build and boot evidence for that change is still being collected.
-- A real VirtualBox boot of a Phase 2 ISO has **not** been recorded yet. The
-  Phase 1 VirtualBox result does not prove Phase 2's Plasma session.
-- 1920x1080 light and dark screenshots have **not** been captured. A QEMU
-  std-VGA EDID experiment at 1920x1080 produced a black framebuffer with only
-  the cursor visible, so that method is rejected and the evidence remains
-  outstanding.
+- The current Phase 2 ISO passes the QEMU UEFI, BIOS and
+  VirtualBox-storage-profile gates. Run 39693031395 proved the VM-aware X11
+  selection with `session=x11`, `virt=kvm` and `selection=eclipseos-x11`.
+- A real VirtualBox 7.2 boot at 2048 MiB reached the Plasma desktop; taskbar,
+  Start menu, applications, theme and networking worked. A slight lag was
+  observed on the low-memory host and is recorded as an observation, not a
+  failure. Firmware mode and a screenshot/log were not included in that
+  manual report, so it is not a complete UEFI+BIOS acceptance record.
+- The Firefox ESR browser is now included with an EclipseOS local start page,
+  bookmarks and unprivileged preferences. It remains the unmodified Debian
+  Mozilla build.
+- Light/dark switching, a light wallpaper, VM compositor tuning and a branded
+  SDDM greeter are implemented in the worktree but still need boot evidence.
+- A QEMU X11 EDID path at 1920x1080 is being re-tested. The earlier Wayland
+  EDID attempt produced a black framebuffer with only the cursor visible and
+  was rejected; no 1920x1080 evidence is claimed yet.
+- Pinned taskbar launchers were written as one string in the earlier layout;
+  this is fixed to a Plasma string list and awaits a new screenshot.
 - Real-hardware Wayland boot has **not** been tested; there is no hardware
   result to claim.
 

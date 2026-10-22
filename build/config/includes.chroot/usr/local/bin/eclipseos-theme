@@ -1,0 +1,129 @@
+#!/bin/sh
+#
+# Switch the EclipseOS light/dark colour scheme.
+#
+# Usage: eclipseos-theme [light|dark|toggle|status|apply]
+#
+# `apply` re-applies the saved scheme at login without changing it. The
+# command can be launched from the Start menu or a terminal; it runs as the
+# live user and stores the choice in ~/.config/eclipseos/theme so the next
+# login keeps it. A kernel command line value is still handled by
+# eclipseos-theme-boot before SDDM starts.
+set -eu
+
+if [ "$(id -u)" -eq 0 ]; then
+    # Never write root-owned files into the live user's profile.
+    if id eclipse >/dev/null 2>&1; then
+        if command -v runuser >/dev/null 2>&1; then
+            exec runuser -u eclipse -- "$0" "$@"
+        fi
+        exec su -s /bin/sh eclipse -c "'$0' $*"
+    fi
+    exec "$0" "$@"
+fi
+
+action="${1:-toggle}"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
+state_dir="${XDG_CONFIG_HOME:-$HOME/.config}/eclipseos"
+state_file="$state_dir/theme"
+light_scheme="EclipseOSLight"
+dark_scheme="EclipseOS"
+
+current_scheme() {
+    if [ -r "$config" ]; then
+        sed -n 's/^ColorScheme=//p' "$config" | head -n 1
+    fi
+}
+
+persist=1
+case "$action" in
+    light) theme="light" ;;
+    dark) theme="dark" ;;
+    toggle)
+        if [ "$(current_scheme)" = "$light_scheme" ]; then
+            theme="dark"
+        else
+            theme="light"
+        fi
+        ;;
+    apply)
+        persist=0
+        if [ "$(current_scheme)" = "$light_scheme" ]; then
+            theme="light"
+        elif [ -r "$state_file" ]; then
+            theme="$(cat "$state_file")"
+        else
+            theme="dark"
+        fi
+        ;;
+    status)
+        current="$(current_scheme)"
+        if [ "$current" = "$light_scheme" ]; then
+            printf 'light\n'
+        elif [ -n "$current" ]; then
+            printf 'dark\n'
+        else
+            printf 'unknown\n'
+        fi
+        exit 0
+        ;;
+    *)
+        printf 'Usage: %s [light|dark|toggle|status|apply]\n' "$0" >&2
+        exit 2
+        ;;
+esac
+
+if [ "$theme" = "light" ]; then
+    scheme="$light_scheme"
+    wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-light-1920x1080.png"
+else
+    scheme="$dark_scheme"
+    wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png"
+fi
+
+if [ "$persist" -eq 1 ]; then
+    mkdir -p "$state_dir"
+    printf '%s\n' "$theme" > "$state_file"
+    chmod 0644 "$state_file"
+fi
+
+# plasma-apply-colorscheme is the supported Plasma 6 path: it updates
+# kdeglobals and notifies the running session. The direct KConfig write is a
+# fallback for a command-line invocation outside a Plasma session.
+applied=0
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] \
+    && command -v plasma-apply-colorscheme >/dev/null 2>&1; then
+    if plasma-apply-colorscheme "$scheme" >/dev/null 2>&1; then
+        applied=1
+    fi
+fi
+
+if [ "$applied" -eq 0 ]; then
+    if command -v kwriteconfig6 >/dev/null 2>&1; then
+        kwriteconfig6 --file "$config" --group General --key ColorScheme "$scheme"
+    else
+        mkdir -p "$(dirname "$config")"
+        if [ ! -f "$config" ]; then
+            printf '[General]\nColorScheme=%s\n' "$scheme" > "$config"
+        elif grep -q '^ColorScheme=' "$config"; then
+            sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+        else
+            printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
+        fi
+    fi
+fi
+
+# Wallpaper selection is a separate Plasma setting. Apply it only when the
+# session bus is available; otherwise the next login picks up the saved state
+# through the theme apply service.
+if [ -f "$wallpaper" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] \
+    && command -v plasma-apply-wallpaperimage >/dev/null 2>&1; then
+    plasma-apply-wallpaperimage "$wallpaper" >/dev/null 2>&1 || true
+fi
+
+# Make the change visible to applications that cache KGlobalSettings values.
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v qdbus6 >/dev/null 2>&1; then
+    qdbus6 org.kde.KWin /KWin reconfigure >/dev/null 2>&1 || true
+fi
+
+printf 'EclipseOS theme: %s\n' "$theme"
