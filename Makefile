@@ -106,8 +106,7 @@ test-theme-light:
 		--firmware bios \
 		--direct-kernel-live \
 		--video-edid 1920x1080 \
-		--kernel-append-extra "eclipseos.theme=light" \
-		--close-welcome \
+		--kernel-append-extra "eclipseos.theme=light eclipseos.nowelcome=1" \
 		--iso "$(ISO)"
 
 test-1920-dark:

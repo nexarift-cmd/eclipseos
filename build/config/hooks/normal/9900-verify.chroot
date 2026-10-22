@@ -28,6 +28,7 @@ for file in \
     /etc/sudoers.d/90-eclipseos-live \
     /etc/sddm.conf.d/50-eclipseos.conf \
     /etc/xdg/kdeglobals \
+    /etc/skel/.config/plasmarc \
     /etc/xdg/kscreenlockerrc \
     /etc/xdg/kwalletrc \
     /etc/xdg/autostart/org.eclipseos.welcome.desktop \
@@ -180,6 +181,14 @@ grep -qx 'ColorScheme=EclipseOS' /etc/xdg/kdeglobals \
     || fail 'the EclipseOS colour scheme is not the system default'
 grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /home/eclipse/.config/kdeglobals \
     || fail 'the live user profile does not default to the EclipseOS look and feel'
+grep -qx 'name=default' /etc/skel/.config/plasmarc \
+    || fail 'the live user profile does not have a Plasma theme default'
+[ -d /usr/share/plasma/desktoptheme/breeze-light ] \
+    || fail 'the Breeze light Plasma theme is not installed'
+grep -q 'plasma-apply-desktoptheme' /usr/local/bin/eclipseos-theme \
+    || fail 'the runtime theme command does not apply the Plasma theme'
+grep -q 'state.conf' /usr/libexec/eclipseos/eclipseos-session-select \
+    || fail 'the session selector does not seed the SDDM greeter session'
 grep -qx 'Current=eclipseos' /etc/sddm.conf.d/50-eclipseos.conf \
     || fail 'SDDM is not using the EclipseOS greeter theme'
 grep -qx 'showlogo=shown' /usr/share/sddm/themes/eclipseos/theme.conf \

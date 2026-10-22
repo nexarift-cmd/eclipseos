@@ -24,10 +24,13 @@ fi
 
 action="${1:-toggle}"
 config="${XDG_CONFIG_HOME:-$HOME/.config}/kdeglobals"
+plasmarc="${XDG_CONFIG_HOME:-$HOME/.config}/plasmarc"
 state_dir="${XDG_CONFIG_HOME:-$HOME/.config}/eclipseos"
 state_file="$state_dir/theme"
 light_scheme="EclipseOSLight"
 dark_scheme="EclipseOS"
+light_plasma_theme="breeze-light"
+dark_plasma_theme="default"
 
 current_scheme() {
     if [ -r "$config" ]; then
@@ -75,9 +78,11 @@ esac
 
 if [ "$theme" = "light" ]; then
     scheme="$light_scheme"
+    plasma_theme="$light_plasma_theme"
     wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-light-1920x1080.png"
 else
     scheme="$dark_scheme"
+    plasma_theme="$dark_plasma_theme"
     wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png"
 fi
 
@@ -87,20 +92,49 @@ if [ "$persist" -eq 1 ]; then
     chmod 0644 "$state_file"
 fi
 
-# plasma-apply-colorscheme is the supported Plasma 6 path: it updates
-# kdeglobals and notifies the running session. The direct KConfig write is a
-# fallback for a command-line invocation outside a Plasma session.
+# Apply all three Plasma layers: the application colour scheme, the Plasma
+# desktop theme (panel, widgets and window decoration) and the wallpaper.
+# This needs a running Plasma session and its session bus.
+apply_session() {
+    [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || return 1
+    command -v plasma-apply-colorscheme >/dev/null 2>&1 || return 1
+    command -v plasma-apply-desktoptheme >/dev/null 2>&1 || return 1
+    command -v plasma-apply-wallpaperimage >/dev/null 2>&1 || return 1
+
+    plasma-apply-colorscheme "$scheme" >/dev/null 2>&1 || return 1
+    plasma-apply-desktoptheme "$plasma_theme" >/dev/null 2>&1 || return 1
+    [ -f "$wallpaper" ] || return 1
+    plasma-apply-wallpaperimage "$wallpaper" >/dev/null 2>&1 || return 1
+    return 0
+}
+
 applied=0
-if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] \
-    && command -v plasma-apply-colorscheme >/dev/null 2>&1; then
-    if plasma-apply-colorscheme "$scheme" >/dev/null 2>&1; then
+if [ "$action" = "apply" ]; then
+    # XDG autostart runs this before Plasma has finished starting. Retry
+    # briefly instead of silently leaving the previous session's theme in
+    # place; the final screenshot/tests then observe the real rendered theme.
+    attempt=0
+    while [ "$attempt" -lt 20 ]; do
+        if apply_session; then
+            applied=1
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 1
+    done
+else
+    if apply_session; then
         applied=1
     fi
 fi
 
+# Direct KConfig writes are a fallback for a command-line invocation outside
+# a Plasma session. They also make the next login deterministic if Plasma was
+# not ready yet.
 if [ "$applied" -eq 0 ]; then
     if command -v kwriteconfig6 >/dev/null 2>&1; then
         kwriteconfig6 --file "$config" --group General --key ColorScheme "$scheme"
+        kwriteconfig6 --file "$plasmarc" --group Theme --key name "$plasma_theme"
     else
         mkdir -p "$(dirname "$config")"
         if [ ! -f "$config" ]; then
@@ -110,15 +144,14 @@ if [ "$applied" -eq 0 ]; then
         else
             printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
         fi
-    fi
-fi
 
-# Wallpaper selection is a separate Plasma setting. Apply it only when the
-# session bus is available; otherwise the next login picks up the saved state
-# through the theme apply service.
-if [ -f "$wallpaper" ] && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] \
-    && command -v plasma-apply-wallpaperimage >/dev/null 2>&1; then
-    plasma-apply-wallpaperimage "$wallpaper" >/dev/null 2>&1 || true
+        mkdir -p "$(dirname "$plasmarc")"
+        if [ -f "$plasmarc" ] && grep -q '^name=' "$plasmarc"; then
+            sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"
+        else
+            printf '\n[Theme]\nname=%s\n' "$plasma_theme" >> "$plasmarc"
+        fi
+    fi
 fi
 
 # Make the change visible to applications that cache KGlobalSettings values.
@@ -127,3 +160,9 @@ if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] && command -v qdbus6 >/dev/null 2>&1; 
 fi
 
 printf 'EclipseOS theme: %s\n' "$theme"
+
+# The login autostart entry treats a fallback-only apply as a failure so its
+# retry loop can try again once the session bus is available.
+if [ "$action" = "apply" ] && [ "$applied" -eq 0 ]; then
+    exit 1
+fi

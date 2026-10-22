@@ -38,11 +38,27 @@ config=/home/eclipse/.config/kdeglobals
 
 if [ "$theme" = "light" ]; then
     scheme=EclipseOSLight
+    plasma_theme=breeze-light
 else
     scheme=EclipseOS
+    plasma_theme=default
 fi
 
 sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
 grep -qx "ColorScheme=$scheme" "$config" \
     || { printf 'eclipseos-theme: could not select the %s colour scheme\n' "$theme" >&2; exit 1; }
 chown eclipse:eclipse "$config"
+
+# The colour scheme controls applications, but the Plasma shell, panel and
+# window decoration use a Plasma desktop theme as well. Select the matching
+# Breeze light/dark variant before Plasma starts; eclipseos-theme applies the
+# same pair again inside the live session, after the session bus is available.
+plasmarc=/home/eclipse/.config/plasmarc
+if [ -f "$plasmarc" ]; then
+    sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"
+else
+    printf '[Theme]\nname=%s\n' "$plasma_theme" > "$plasmarc"
+fi
+grep -qx "name=$plasma_theme" "$plasmarc" \
+    || { printf 'eclipseos-theme: could not select the %s Plasma theme\n' "$theme" >&2; exit 1; }
+chown eclipse:eclipse "$plasmarc"

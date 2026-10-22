@@ -349,6 +349,31 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     return command, vars_copy
 
 
+def close_live_welcome(qmp: Qmp) -> None:
+    """Close the XDG-autostart welcome terminal in a headless screenshot run.
+
+    The terminal is started after the panel and may not yet exist when the
+    boot marker appears. Focus it with the window switcher first; Alt+F4 on
+    an unfocused desktop/panel would otherwise do nothing.
+    """
+    time.sleep(4.0)
+    for _ in range(2):
+        qmp.command("send-key", {
+            "keys": [
+                {"type": "qcode", "data": "alt"},
+                {"type": "qcode", "data": "tab"},
+            ]
+        })
+        time.sleep(1.0)
+        qmp.command("send-key", {
+            "keys": [
+                {"type": "qcode", "data": "alt"},
+                {"type": "qcode", "data": "f4"},
+            ]
+        })
+        time.sleep(2.0)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--firmware", choices=("uefi", "bios"), default="uefi")
@@ -542,13 +567,8 @@ def main() -> int:
                 log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
                 if args.close_welcome and qmp is not None:
                     try:
-                        qmp.command("send-key", {
-                            "keys": [
-                                {"type": "qcode", "data": "alt"},
-                                {"type": "qcode", "data": "f4"},
-                            ]
-                        })
-                        log("Sent Alt+F4 to close the live welcome terminal")
+                        close_live_welcome(qmp)
+                        log("Closed the live welcome terminal for a clean screenshot")
                     except Exception as exc:
                         log(f"warning: could not close welcome terminal: {exc}")
                 time.sleep(8.0)
@@ -556,13 +576,8 @@ def main() -> int:
             log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
             if args.close_welcome and qmp is not None:
                 try:
-                    qmp.command("send-key", {
-                        "keys": [
-                            {"type": "qcode", "data": "alt"},
-                            {"type": "qcode", "data": "f4"},
-                        ]
-                    })
-                    log("Sent Alt+F4 to close the live welcome terminal")
+                    close_live_welcome(qmp)
+                    log("Closed the live welcome terminal for a clean screenshot")
                 except Exception as exc:
                     log(f"warning: could not close welcome terminal: {exc}")
             time.sleep(8.0)

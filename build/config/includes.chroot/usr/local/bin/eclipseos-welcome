@@ -12,6 +12,12 @@ if ! grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
     exit 0
 fi
 
+# Headless visual-evidence boots request a clean desktop without the welcome
+# terminal; this is a test-only switch and does not affect normal live boots.
+if grep -qw 'eclipseos.nowelcome=1' /proc/cmdline 2>/dev/null; then
+    exit 0
+fi
+
 if ! command -v konsole >/dev/null 2>&1; then
     exit 0
 fi
