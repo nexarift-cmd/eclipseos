@@ -114,6 +114,7 @@ test-1920-dark:
 		--firmware uefi \
 		--video-edid 1920x1080 \
 		--close-welcome \
+		--start-menu \
 		--iso "$(ISO)"
 
 # SDDM branding evidence. eclipseos.autologin=off overrides the live-user

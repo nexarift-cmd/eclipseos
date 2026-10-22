@@ -349,6 +349,43 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     return command, vars_copy
 
 
+def tap_keys(qmp: Qmp, *keys: str) -> None:
+    qmp.command("send-key", {
+        "keys": [{"type": "qcode", "data": key} for key in keys]
+    })
+
+
+def capture_start_menu_evidence(qmp: Qmp, outdir: Path) -> list[str]:
+    """Exercise Kickoff with the keyboard and save inspectable screenshots.
+
+    This is visual evidence, not a text assertion: a reviewer can see the open
+    menu, the search result and the launched Firefox window. The automation is
+    intentionally best-effort so a compositor shortcut change cannot turn the
+    release gate into a spurious failure.
+    """
+    captured: list[str] = []
+    tap_keys(qmp, "alt", "f1")
+    time.sleep(3.0)
+    path, _ = capture_screenshot(qmp, outdir, "startmenu")
+    captured.append(str(path))
+    log(f"Start menu screenshot: {path.name}")
+
+    for key in "firefox":
+        tap_keys(qmp, key)
+        time.sleep(0.15)
+    time.sleep(3.0)
+    path, _ = capture_screenshot(qmp, outdir, "startmenu-search")
+    captured.append(str(path))
+    log(f"Start menu search screenshot: {path.name}")
+
+    tap_keys(qmp, "ret")
+    time.sleep(12.0)
+    path, _ = capture_screenshot(qmp, outdir, "firefox-launched")
+    captured.append(str(path))
+    log(f"Firefox launch screenshot: {path.name}")
+    return captured
+
+
 def close_live_welcome(qmp: Qmp) -> None:
     """Close the XDG-autostart welcome terminal in a headless screenshot run.
 
@@ -429,6 +466,11 @@ def main() -> int:
         help="send Alt+F4 after the marker to close the live welcome terminal before the final screenshot",
     )
     parser.add_argument(
+        "--start-menu",
+        action="store_true",
+        help="open Kickoff, search for Firefox, launch it and save visual evidence",
+    )
+    parser.add_argument(
         "--screenshot-interval",
         type=int,
         default=30,
@@ -466,6 +508,7 @@ def main() -> int:
     failed_units: int | None = None
     screenshot_result: dict | None = None
     early_screenshots: list[str] = []
+    startmenu_screenshots: list[str] = []
     final_png: Path | None = None
     failure_reason = ""
 
@@ -582,6 +625,12 @@ def main() -> int:
                     log(f"warning: could not close welcome terminal: {exc}")
             time.sleep(8.0)
 
+        if args.start_menu and qmp is not None and not failure_reason:
+            try:
+                startmenu_screenshots = capture_start_menu_evidence(qmp, outdir)
+            except Exception as exc:
+                log(f"warning: Start menu visual evidence failed: {exc}")
+
         if qmp is None:
             try:
                 qmp = Qmp(qmp_socket, timeout=2.0)
@@ -670,6 +719,7 @@ def main() -> int:
         "screenshot": str(final_png) if final_png else None,
         "screenshot_info": screenshot_result,
         "early_screenshots": early_screenshots,
+        "startmenu_screenshots": startmenu_screenshots,
         "result": "pass" if not failure_reason else "fail",
         "failure_reason": failure_reason,
     }

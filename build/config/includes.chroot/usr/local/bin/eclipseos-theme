@@ -29,8 +29,9 @@ state_dir="${XDG_CONFIG_HOME:-$HOME/.config}/eclipseos"
 state_file="$state_dir/theme"
 light_scheme="EclipseOSLight"
 dark_scheme="EclipseOS"
-light_plasma_theme="breeze-light"
-dark_plasma_theme="default"
+light_lookandfeel="org.eclipseos.light.desktop"
+dark_lookandfeel="org.eclipseos.desktop"
+plasma_theme="default"
 
 current_scheme() {
     if [ -r "$config" ]; then
@@ -78,11 +79,11 @@ esac
 
 if [ "$theme" = "light" ]; then
     scheme="$light_scheme"
-    plasma_theme="$light_plasma_theme"
+    lookandfeel="$light_lookandfeel"
     wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-light-1920x1080.png"
 else
     scheme="$dark_scheme"
-    plasma_theme="$dark_plasma_theme"
+    lookandfeel="$dark_lookandfeel"
     wallpaper="/usr/share/backgrounds/eclipseos/eclipseos-wallpaper-1920x1080.png"
 fi
 
@@ -92,15 +93,19 @@ if [ "$persist" -eq 1 ]; then
     chmod 0644 "$state_file"
 fi
 
-# Apply all three Plasma layers: the application colour scheme, the Plasma
-# desktop theme (panel, widgets and window decoration) and the wallpaper.
-# This needs a running Plasma session and its session bus.
+# Apply the global theme, then re-assert the three visible Plasma layers:
+# colour scheme, widget/desktop theme and wallpaper. Applying the global theme
+# switches the shell's defaults (including the EclipseOS wallpaper); the
+# individual commands keep the result deterministic if the theme package is
+# applied while the panel is still starting.
 apply_session() {
     [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || return 1
+    command -v plasma-apply-lookandfeel >/dev/null 2>&1 || return 1
     command -v plasma-apply-colorscheme >/dev/null 2>&1 || return 1
     command -v plasma-apply-desktoptheme >/dev/null 2>&1 || return 1
     command -v plasma-apply-wallpaperimage >/dev/null 2>&1 || return 1
 
+    plasma-apply-lookandfeel "$lookandfeel" >/dev/null 2>&1 || return 1
     plasma-apply-colorscheme "$scheme" >/dev/null 2>&1 || return 1
     plasma-apply-desktoptheme "$plasma_theme" >/dev/null 2>&1 || return 1
     [ -f "$wallpaper" ] || return 1
@@ -133,16 +138,29 @@ fi
 # not ready yet.
 if [ "$applied" -eq 0 ]; then
     if command -v kwriteconfig6 >/dev/null 2>&1; then
+        kwriteconfig6 --file "$config" --group KDE --key LookAndFeelPackage "$lookandfeel"
         kwriteconfig6 --file "$config" --group General --key ColorScheme "$scheme"
         kwriteconfig6 --file "$plasmarc" --group Theme --key name "$plasma_theme"
     else
         mkdir -p "$(dirname "$config")"
         if [ ! -f "$config" ]; then
-            printf '[General]\nColorScheme=%s\n' "$scheme" > "$config"
-        elif grep -q '^ColorScheme=' "$config"; then
-            sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+            printf '[KDE]\nLookAndFeelPackage=%s\n\n[General]\nColorScheme=%s\n' \
+                "$lookandfeel" "$scheme" > "$config"
         else
-            printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
+            if grep -q '^LookAndFeelPackage=' "$config"; then
+                sed -i "s/^LookAndFeelPackage=.*/LookAndFeelPackage=$lookandfeel/" "$config"
+            elif grep -q '^\[KDE\]' "$config"; then
+                sed -i "/^\[KDE\]/a LookAndFeelPackage=$lookandfeel" "$config"
+            else
+                printf '\n[KDE]\nLookAndFeelPackage=%s\n' "$lookandfeel" >> "$config"
+            fi
+            if grep -q '^ColorScheme=' "$config"; then
+                sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+            elif grep -q '^\[General\]' "$config"; then
+                sed -i "/^\[General\]/a ColorScheme=$scheme" "$config"
+            else
+                printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
+            fi
         fi
 
         mkdir -p "$(dirname "$plasmarc")"

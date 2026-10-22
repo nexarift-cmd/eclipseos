@@ -29,6 +29,7 @@ for file in \
     /etc/sddm.conf.d/50-eclipseos.conf \
     /etc/xdg/kdeglobals \
     /etc/skel/.config/plasmarc \
+    /usr/share/plasma/look-and-feel/org.eclipseos.light.desktop/metadata.json \
     /etc/xdg/kscreenlockerrc \
     /etc/xdg/kwalletrc \
     /etc/xdg/autostart/org.eclipseos.welcome.desktop \
@@ -183,10 +184,16 @@ grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /home/eclipse/.config/kdeglo
     || fail 'the live user profile does not default to the EclipseOS look and feel'
 grep -qx 'name=default' /etc/skel/.config/plasmarc \
     || fail 'the live user profile does not have a Plasma theme default'
-[ -d /usr/share/plasma/desktoptheme/breeze-light ] \
-    || fail 'the Breeze light Plasma theme is not installed'
-grep -q 'plasma-apply-desktoptheme' /usr/local/bin/eclipseos-theme \
-    || fail 'the runtime theme command does not apply the Plasma theme'
+grep -qx 'ColorScheme=EclipseOSLight' \
+    /usr/share/plasma/look-and-feel/org.eclipseos.light.desktop/contents/defaults \
+    || fail 'the light look and feel does not select the light colour scheme'
+grep -q 'eclipseos-wallpaper-light-1920x1080.png' \
+    /usr/share/plasma/look-and-feel/org.eclipseos.light.desktop/contents/layouts/org.kde.plasma.desktop-layout.js \
+    || fail 'the light look and feel does not use the light wallpaper'
+grep -q 'org.eclipseos.light.desktop' /usr/local/bin/eclipseos-theme \
+    || fail 'the runtime theme command cannot select the light look and feel'
+grep -q 'plasma-apply-lookandfeel' /usr/local/bin/eclipseos-theme \
+    || fail 'the runtime theme command does not apply the global theme'
 grep -q 'state.conf' /usr/libexec/eclipseos/eclipseos-session-select \
     || fail 'the session selector does not seed the SDDM greeter session'
 grep -qx 'Current=eclipseos' /etc/sddm.conf.d/50-eclipseos.conf \

@@ -25,6 +25,7 @@ KERNEL=""
 INITRD=""
 KERNEL_APPEND_EXTRA=""
 CLOSE_WELCOME=0
+START_MENU=0
 KERNEL_APPEND="console=tty0 console=ttyS0,115200n8 quiet"
 OUTDIR=""
 BOOT_TMP=""
@@ -68,6 +69,8 @@ Options:
   --close-welcome       Send Alt+F4 after the boot marker so the final
                         screenshot shows the desktop rather than the welcome
                         terminal.
+  --start-menu          Open Kickoff, search for Firefox, launch it and save
+                        Start menu/search/launch screenshots.
   --outdir PATH         Output directory (default: tests/out/<timestamp>-<firmware>-...)
   -h, --help            Show this help
 EOF
@@ -89,6 +92,7 @@ while [[ $# -gt 0 ]]; do
         --direct-kernel-live) DIRECT_KERNEL=1; DIRECT_LIVE=1; shift ;;
         --kernel-append-extra) KERNEL_APPEND_EXTRA="${2:?--kernel-append-extra requires text}"; shift 2 ;;
         --close-welcome) CLOSE_WELCOME=1; shift ;;
+        --start-menu) START_MENU=1; shift ;;
         --outdir) OUTDIR="${2:?--outdir requires a path}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
@@ -246,6 +250,9 @@ if [[ -n "$VIDEO_EDID" ]]; then
 fi
 if [[ "$CLOSE_WELCOME" -eq 1 ]]; then
     python_args+=(--close-welcome)
+fi
+if [[ "$START_MENU" -eq 1 ]]; then
+    python_args+=(--start-menu)
 fi
 if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
     python_args+=(

@@ -38,21 +38,27 @@ config=/home/eclipse/.config/kdeglobals
 
 if [ "$theme" = "light" ]; then
     scheme=EclipseOSLight
-    plasma_theme=breeze-light
+    lookandfeel=org.eclipseos.light.desktop
 else
     scheme=EclipseOS
-    plasma_theme=default
+    lookandfeel=org.eclipseos.desktop
 fi
+plasma_theme=default
 
 sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
 grep -qx "ColorScheme=$scheme" "$config" \
     || { printf 'eclipseos-theme: could not select the %s colour scheme\n' "$theme" >&2; exit 1; }
+sed -i "s/^LookAndFeelPackage=.*/LookAndFeelPackage=$lookandfeel/" "$config"
+grep -qx "LookAndFeelPackage=$lookandfeel" "$config" \
+    || { printf 'eclipseos-theme: could not select the %s look and feel\n' "$theme" >&2; exit 1; }
 chown eclipse:eclipse "$config"
 
-# The colour scheme controls applications, but the Plasma shell, panel and
-# window decoration use a Plasma desktop theme as well. Select the matching
-# Breeze light/dark variant before Plasma starts; eclipseos-theme applies the
-# same pair again inside the live session, after the session bus is available.
+# The colour scheme drives the Plasma shell too, but the selected global theme
+# also supplies the branded wallpaper and shell defaults. Select the matching
+# EclipseOS light/dark look and feel before Plasma starts; eclipseos-theme
+# applies the same package again inside the live session. Both EclipseOS
+# themes use Plasma's colour-aware default widget style, so plasmarc stays on
+# "default" and the colour scheme selects the light/dark rendering.
 plasmarc=/home/eclipse/.config/plasmarc
 if [ -f "$plasmarc" ]; then
     sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"

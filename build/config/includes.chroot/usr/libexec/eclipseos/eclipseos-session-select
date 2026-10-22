@@ -52,7 +52,7 @@ state_dir=/var/lib/sddm
 if [ -d "$state_dir" ]; then
     cat > "$state_dir/state.conf" <<EOF
 [Last]
-Session=$session
+Session=$session.desktop
 User=eclipse
 EOF
     chmod 0644 "$state_dir/state.conf"

@@ -1,0 +1,17 @@
+{
+  "KPackageStructure": "Plasma/LookAndFeel",
+  "KPlugin": {
+    "Authors": [
+      {
+        "Name": "EclipseOS project"
+      }
+    ],
+    "Category": "Plasma",
+    "Description": "EclipseOS light desktop look and feel",
+    "Id": "org.eclipseos.light.desktop",
+    "License": "GPL-3.0-or-later",
+    "Name": "EclipseOS Light",
+    "Version": "1.0"
+  },
+  "X-Plasma-APIVersion": "2"
+}
