@@ -37,22 +37,22 @@ cat > /etc/sddm.conf.d/zz-eclipseos-session.conf <<EOF
 [Autologin]
 User=$autologin_user
 Session=$session
-
-[Users]
-RememberLastSession=false
-RememberLastUser=false
 EOF
 chmod 0644 /etc/sddm.conf.d/zz-eclipseos-session.conf
 
-# The greeter has its own session selector. Seed SDDM's state so the greeter
-# also preselects the VM-safe X11 session when autologin is disabled; the
-# RememberLastSession=false drop-in prevents a later manual choice from
-# changing this test image's deterministic selection.
+# The greeter has its own session selector. Seed SDDM's state with the
+# absolute .desktop path used by Session::fileName(); the greeter's lastIndex
+# compares that value directly. A bare filename is not enough. Leave
+# RememberLastSession at its default so SDDM can keep this state in sync.
 state_dir=/var/lib/sddm
+case "$session" in
+    eclipseos-x11) session_file=/usr/share/xsessions/$session.desktop ;;
+    *) session_file=/usr/share/wayland-sessions/$session.desktop ;;
+esac
 if [ -d "$state_dir" ]; then
     cat > "$state_dir/state.conf" <<EOF
 [Last]
-Session=$session.desktop
+Session=$session_file
 User=eclipse
 EOF
     chmod 0644 "$state_dir/state.conf"
