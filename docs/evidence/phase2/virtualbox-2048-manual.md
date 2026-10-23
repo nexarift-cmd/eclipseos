@@ -2,7 +2,10 @@
 
 Status: **passed for the reported boot**, manual evidence. This is not a full
 Phase 2 acceptance record: the report did not include a screenshot, a serial
-log or a separate firmware-mode run.
+log or a separate firmware-mode run. It predates the Firefox, light/dark,
+SDDM and VM-tuning changes; see
+[`virtualbox-3000-bios-manual.md`](virtualbox-3000-bios-manual.md) for the
+later BIOS report and [`README.md`](README.md) for the final QEMU evidence.
 
 ## Image
 

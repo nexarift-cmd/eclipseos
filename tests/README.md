@@ -26,20 +26,45 @@ all three gates: UEFI, BIOS, and the VirtualBox storage profile, the latter at
 [`../docs/evidence/phase1`](../docs/evidence/phase1/README.md).
 
 The Phase 2 image replaces that session with SDDM and Plasma. Its marker
-reports `session=wayland` or `session=x11`, plus `theme=`, `virt=`,
-`selection=`, `vm_tuning=` and `failed_units=`. QEMU runs are virtual
-machines, so `eclipseos-session.service` should make them report
-`session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value is
-provided by `systemd-detect-virt`; KVM is expected on the CI runner.
+reports `session=wayland` or `session=x11`, plus `theme=`, `theme_status=`,
+`applied_theme=`, `virt=`, `selection=`, `vm_tuning=` and `failed_units=`.
+QEMU runs are virtual machines, so `eclipseos-session.service` makes them
+report `session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value
+is provided by `systemd-detect-virt`; KVM is expected on the CI runner.
 
-Run 39693031395 (commit `78474f5`) passed the UEFI, BIOS and
-VirtualBox-storage-profile gates with
-`ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark virt=kvm selection=eclipseos-x11 failed_units=0`
-and 1280x800 screenshots. A real VirtualBox 2048 MiB boot of that ISO also
-reached Plasma. Neither run proves the new browser, pinned-launcher, theme
-switch, VM tuning or SDDM greeter changes; those require the next build. A
-Phase 2 image is not accepted until the marker, the branded greeter and
-non-blank 1920x1080 light/dark framebuffer captures have been inspected.
+Run [39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
+from commit `0dd6f0f` is the final Phase 2 QEMU evidence set. It passed the
+UEFI, BIOS and VirtualBox-storage-profile gates at 1280x800, plus the
+1920x1080 light, dark and SDDM greeter captures. The default marker was:
+
+```text
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+```
+
+The light marker was:
+
+```text
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+```
+
+The light screenshot is genuinely light; the dark capture is dark and shows
+Firefox open after the Start-menu launch step. Both are 1920x1080 framebuffer
+captures, not upscales. `scheme=unknown` is
+expected after Plasma applies a look-and-feel package: Plasma may remove the
+local `ColorScheme` key while retaining the rendered colours. The light gate
+checks the successful apply status, the applied theme and the light
+look-and-feel; the screenshot is the visual check.
+
+The final run also captured an open Kickoff menu, a `firefox` search result,
+and Firefox ESR displaying the offline EclipseOS start page. The greeter
+capture shows the branded SDDM screen and the X11 session selection. Those
+captures and the result JSONs are in
+[`../docs/evidence/phase2`](../docs/evidence/phase2/README.md).
+
+The power-off action and tray-control clicks were not exercised. The power
+menu was observed open and the tray icons are visible, but that is not the
+same as testing the actions. A Phase 2 image is **not fully accepted** until
+the remaining gates in the evidence index are closed.
 
 `eclipseos-bootcheck` reports `stage=greeter session=greeter` instead of
 `stage=desktop` when the kernel command line contains
@@ -67,16 +92,22 @@ and the prevention of VISO creation are the regression checks.
 `eclipseos.theme=light` one-shot selector and a QEMU std-VGA EDID mode of
 1920x1080. `make test-1920-dark` captures the default dark desktop at the same
 resolution. Both close the welcome terminal with a QMP Alt+F4 before the final
-screenshot so the taskbar and Start button are visible. They are manual
-evidence targets, not yet part of `make test-all`, until the captures have
-been visually inspected. The earlier Wayland EDID attempt produced a black
-framebuffer with only a cursor; this X11 path is a new, separate test.
+screenshot so the taskbar and Start button are visible.
+
+These targets now pass and their captures have been inspected: the light
+image is genuinely light and the dark image is dark. They remain separate
+visual-evidence steps rather than members of the minimal `make test-all`
+boot gate, so a compositor screenshot regression does not hide a core boot
+failure. CI still runs and uploads them on every build.
 
 `make test-sddm` boots with `eclipseos.autologin=off`, waits for the SDDM
-greeter and captures the branded login screen at 1920x1080. It is also a
-manual evidence target, not a release gate yet. A successful greeter marker
-does not prove that a real user can log in; that still requires an interactive
-check or a later automated login test.
+greeter and captures the branded login screen at 1920x1080. It now passes and
+shows `Desktop Session: EclipseOS (X11)`, but a successful greeter marker
+does not prove that a real user can log in.
+
+The start-menu automation in `qemu_boot_test.py` opens Kickoff, searches for
+`firefox`, launches the browser and captures the result. It is visual evidence
+only; it does not click Start-menu power actions or tray controls.
 
 ### Serial marker contract
 
@@ -84,12 +115,15 @@ The live image's `eclipseos-bootcheck` service must write a line like this to
 `/dev/ttyS0` once the session is actually usable:
 
 ```text
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
 ```
 
 The greeter path writes a similar line with `stage=greeter session=greeter`.
 `vm_tuning=1` means `eclipseos-vm-tuning.service` detected a VM and applied
-the compositor settings; `0` is expected on physical hardware.
+the compositor settings; `0` is expected on physical hardware. On a one-shot
+light boot, the desktop marker additionally reports
+`theme_status=applied applied_theme=light` and
+`lookandfeel=org.eclipseos.light.desktop`.
 
 If the session does not start, it writes:
 

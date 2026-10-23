@@ -1,18 +1,19 @@
 # EclipseOS architecture
 
-Status: **Phase 1 is accepted; Phase 2 is an in-progress preview.** This
-document describes the target product and the current subset. Phase 1 used
-LightDM + openbox + xterm/feh; the Phase 2 preview replaces that session with
-SDDM + Plasma and adds the branded shell, Firefox ESR, light/dark switching,
-VM tuning and a custom greeter. The Phase 1 ISO booted in QEMU UEFI/BIOS and
-VirtualBox EFI/BIOS at 2048 MiB; the strict main-only image also passed both
-QEMU boots with zero non-free firmware packages. A real VirtualBox 2048 MiB
-Phase 2 boot and the QEMU Phase 2 gates have passed, but Phase 2 is not
-accepted: see [`evidence/phase2`](evidence/phase2/README.md). The 4096 MiB
-VirtualBox target and real-hardware Wayland remain open. This document is
-design and policy, not boot evidence; see
-[`evidence/phase1`](evidence/phase1/README.md) and
-[build-environment.md](build-environment.md).
+Status: **Phase 1 is accepted; Phase 2 is a verified candidate, not fully
+accepted.** This document describes the target product and the current
+subset. Phase 1 used LightDM + openbox + xterm/feh; the Phase 2 candidate
+replaces that session with SDDM + Plasma and adds the branded shell, Firefox
+ESR, light/dark switching, VM tuning and a custom greeter. Final Phase 2 QEMU
+run 39903705903 passed UEFI, BIOS, the VirtualBox storage profile and
+1920x1080 light, dark and greeter captures. A real VirtualBox BIOS boot at
+3000 MiB reached the desktop on the earlier `768a4f9` ISO, but the final
+`0dd6f0f` ISO was not re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the
+start-menu power-off action, tray interaction, greeter login and
+real-hardware Wayland remain open. See
+[`evidence/phase2`](evidence/phase2/README.md). This document is design and
+policy, not boot evidence; see [`evidence/phase1`](evidence/phase1/README.md)
+and [build-environment.md](build-environment.md).
 
 ## 1. Scope and honest boundaries
 
@@ -165,7 +166,7 @@ pinned package snapshot".
 
 ## 5. Desktop shell design
 
-### Current Phase 2 preview
+### Current Phase 2 candidate
 
 The current live image uses SDDM autologin into Plasma 6.3, a floating
 bottom panel built from stock Plasma applets, and the EclipseOS look-and-feel.
@@ -179,18 +180,31 @@ system preferences from `/etc/firefox-esr/firefox-esr.js` plus
 new profile, not a locked browser.
 
 `eclipseos-theme` switches the `EclipseOS` and `EclipseOSLight` colour schemes
-at runtime and applies the matching dark or light wallpaper. The choice is
-stored in `~/.config/eclipseos/theme`; `eclipseos.theme=light|dark` remains a
-one-shot boot override for tests. `eclipseos-theme-boot` applies the saved
-scheme before SDDM, and an XDG autostart entry re-applies the wallpaper after
-the Plasma session bus exists.
+and the matching dark or light look-and-feel and wallpaper at runtime. The
+choice is stored in `~/.config/eclipseos/theme`; `eclipseos.theme=light|dark`
+remains a one-shot boot override for tests. `eclipseos-theme-boot` selects the
+theme before SDDM, writes the authoritative value to `/run/eclipseos-theme`,
+and inserts or updates `ColorScheme`, `LookAndFeelPackage` and the Plasma
+theme key in the live user's config. The login autostart command calls
+`eclipseos-theme apply`; `apply` reads `/run/eclipseos-theme` rather than
+guessing from a config file Plasma may already have rewritten, applies the
+global look-and-feel, colour scheme, desktop theme and wallpaper, and records
+the result under `~/.cache/eclipseos-theme/`. `eclipseos-bootcheck` waits for
+that status on a light boot and checks the applied look-and-feel before
+declaring the desktop ready. The light theme is a separate
+`org.eclipseos.light.desktop` package; both EclipseOS global themes keep the
+colour-aware `default` Plasma style.
 
 The greeter is a thin branding derivative of the Debian Breeze SDDM theme:
 the upstream QML is reused unchanged, while `theme.conf` points at the
-EclipseOS mark and wallpaper. `eclipseos-vm-tuning.service` runs only when
-`systemd-detect-virt --vm` is true and disables KWin blur, contrast,
-translucency, window animations and related effects for the live user. It
-does not disable the compositor. Physical machines keep the full effects.
+EclipseOS mark and wallpaper. `eclipseos-session-select` writes the absolute
+`/usr/share/xsessions/eclipseos-x11.desktop` path into SDDM's last-session
+state so the greeter preselects **EclipseOS (X11)** in a VM; a bare session
+filename does not match SDDM's `SessionModel`. `eclipseos-vm-tuning.service`
+runs only when `systemd-detect-virt --vm` is true and disables KWin blur,
+contrast, translucency, window animations and related effects for the live
+user. It does not disable the compositor. Physical machines keep the full
+effects.
 
 ### Target approach
 

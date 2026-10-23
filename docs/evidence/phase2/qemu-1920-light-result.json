@@ -1,0 +1,34 @@
+{
+  "timestamp_utc": "2026-10-23T05:15:08+00:00",
+  "firmware": "bios",
+  "machine": "q35",
+  "vga": "std",
+  "video_edid": "1920x1080",
+  "optical": "auto",
+  "boot_mode": "direct-kernel",
+  "close_welcome": false,
+  "kernel": "/tmp/eclipseos-boot.XsSJor/kernel",
+  "initrd": "/tmp/eclipseos-boot.XsSJor/initrd",
+  "kernel_append": "boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8 eclipseos.theme=light eclipseos.nowelcome=1",
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "0e8497bda36da7d371a93e35fe37547282a56586d1e5338e94f432569d96aa10",
+  "duration_seconds": 32.3,
+  "marker": "ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261023T051435Z-bios-q35-auto-std-direct-live-edid-1920x1080/screenshot.png",
+  "screenshot_info": {
+    "width": 1920,
+    "height": 1080,
+    "sampled_pixels": 103680,
+    "non_black_ratio": 0.999846,
+    "unique_colours": 1089,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261023T051435Z-bios-q35-auto-std-direct-live-edid-1920x1080/boot-01-0008s.png"
+  ],
+  "startmenu_screenshots": [],
+  "result": "pass",
+  "failure_reason": ""
+}

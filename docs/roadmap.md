@@ -15,9 +15,14 @@ is fixed by branding `/.disk/info` (no VISO detection) plus a `BOOT=live`
 initramfs default. 4096 MiB is recommended but remains untested because this
 5.1 GB host cannot start the guest. The strict main-only ISO from run #4
 contains zero non-free firmware packages; it was not rebuilt after the
-Phase 1 fix. Phase 2 has started on a separate branch until its first Plasma
-ISO passes a boot gate. Evidence:
-[`evidence/phase1`](evidence/phase1/README.md) and
+Phase 1 fix. Phase 2 is a verified candidate: final QEMU run `39903705903`
+passed the three default boots plus 1920x1080 light, dark and SDDM captures,
+and a manual VirtualBox BIOS boot at 3000 MiB on the earlier `768a4f9` ISO
+reached the desktop. The final ISO was not re-run in VirtualBox; VirtualBox
+UEFI, power-off/tray actions, greeter login and real-hardware Wayland remain
+open. Evidence:
+[`evidence/phase1`](evidence/phase1/README.md),
+[`evidence/phase2`](evidence/phase2/README.md), and
 [`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
 
 ## Phase 0 — Plan and repository skeleton
@@ -110,28 +115,32 @@ Acceptance:
 - no Microsoft assets; licence inventory updated;
 - QEMU smoke test still passes.
 
-### Status at the current Phase 2 preview
+### Status at the current Phase 2 candidate
 
-- The current Phase 2 ISO passes the QEMU UEFI, BIOS and
-  VirtualBox-storage-profile gates. Run 39693031395 proved the VM-aware X11
-  selection with `session=x11`, `virt=kvm` and `selection=eclipseos-x11`.
-- A real VirtualBox 7.2 boot at 2048 MiB reached the Plasma desktop; taskbar,
-  Start menu, applications, theme and networking worked. A slight lag was
-  observed on the low-memory host and is recorded as an observation, not a
-  failure. Firmware mode and a screenshot/log were not included in that
-  manual report, so it is not a complete UEFI+BIOS acceptance record.
-- The Firefox ESR browser is now included with an EclipseOS local start page,
+- Final QEMU run
+  [39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
+  from commit `0dd6f0f` passed UEFI, BIOS, the VirtualBox-storage-profile
+  boot and 1920x1080 light, dark and SDDM greeter captures. Every desktop
+  marker reported `session=x11`, `virt=kvm`, `selection=eclipseos-x11`,
+  `vm_tuning=1` and `failed_units=0`.
+- The light and dark captures are genuine 1920x1080 framebuffer images. The
+  greeter shows the EclipseOS live user and `Desktop Session: EclipseOS (X11)`.
+  Kickoff opens, searches for Firefox and launches it with the offline
+  EclipseOS start page.
+- A real VirtualBox 7.2.20 boot at 3000 MiB with **EFI off** (BIOS, VMSVGA)
+  reached the Plasma desktop on the earlier `768a4f9` ISO. The owner reported
+  improved lag, a working Firefox start page, a visible power menu, a working
+  runtime light switch and no problems. The final `0dd6f0f` ISO has not been
+  re-run in VirtualBox.
+- VirtualBox UEFI, 4096 MiB, the actual Start-menu power-off action,
+  tray-control clicks, a successful greeter login and real-hardware Wayland
+  remain unverified. A visible power menu is not proof that power-off was
+  pressed.
+- The Firefox ESR browser is included with an EclipseOS local start page,
   bookmarks and unprivileged preferences. It remains the unmodified Debian
   Mozilla build.
-- Light/dark switching, a light wallpaper, VM compositor tuning and a branded
-  SDDM greeter are implemented in the worktree but still need boot evidence.
-- A QEMU X11 EDID path at 1920x1080 is being re-tested. The earlier Wayland
-  EDID attempt produced a black framebuffer with only the cursor visible and
-  was rejected; no 1920x1080 evidence is claimed yet.
-- Pinned taskbar launchers were written as one string in the earlier layout;
-  this is fixed to a Plasma string list and awaits a new screenshot.
-- Real-hardware Wayland boot has **not** been tested; there is no hardware
-  result to claim.
+- Pinned taskbar launchers and running indicators are visible in the final
+  screenshots. The earlier one-string launcher bug is fixed.
 
 The exact evidence and limitations are in
 [`evidence/phase2/README.md`](evidence/phase2/README.md).

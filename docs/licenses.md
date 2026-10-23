@@ -105,6 +105,10 @@ The authoritative build-time allowlist is the `ALLOWED_FIRMWARE` list in
 `build/config/hooks/normal/0300-licences.chroot`. It must stay in sync with
 the package-list template and this table.
 
+Phase 2 adds no new non-free exception. Plasma, SDDM, the Breeze-derived
+greeter, Firefox ESR and the EclipseOS artwork are all from Debian `main` or
+original project work.
+
 ### Deliberately excluded non-free packages
 
 | Package | Reason |
@@ -145,13 +149,14 @@ exception.
 | Inter | UI font | SIL Open Font License 1.1 | Reused; reserved name unmodified |
 | DejaVu, Liberation fonts | Fallback fonts | Bitstream Vera / GPL-2.0 with font exception | Reused |
 | Adwaita and hicolor icon themes | Base icons | LGPL-3.0-or-later / public-domain-ish (verify package copyright) | Reused |
-| EclipseOS logo, wallpaper, GRUB/Plymouth artwork, scripts | Product identity and integration | GPL-3.0-or-later (project) | Original |
+| EclipseOS logo, dark/light wallpapers, GRUB/Plymouth artwork, scripts | Product identity and integration | GPL-3.0-or-later (project) | Original |
 
 ### Phase 2 desktop (in the current ISO) and later work
 
 | Component | Use | Licence | Status |
 | --- | --- | --- | --- |
 | KDE Plasma / KWin 6.3 | Desktop session, compositor | GPL-2.0-or-later / LGPL-2.1-or-later | Included; configured by EclipseOS |
+| EclipseOS dark/light Plasma look-and-feel, wallpapers and SDDM branding | EclipseOS visual identity | GPL-3.0-or-later (project); Breeze-derived QML retains upstream LGPL/CC-BY-SA notices | Original configuration and artwork; upstream QML headers retained |
 | SDDM | Login manager | GPL-2.0-or-later | Included; EclipseOS configuration |
 | Breeze SDDM theme (`sddm-theme-breeze`) | QML greeter base | CC-BY-SA-4.0 metadata; QML files LGPL-2.0-or-later | Included; EclipseOS derivative theme, upstream headers retained |
 | KDE Frameworks 6 / Qt 6 | Desktop libraries | LGPL-2.1-or-later / LGPL-3.0 / GPL-3.0 | Included as dependencies |
