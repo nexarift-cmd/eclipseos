@@ -122,6 +122,7 @@ if [ -r /run/eclipseos-theme ]; then
     theme="$(cat /run/eclipseos-theme 2>/dev/null || printf dark)"
 fi
 theme_status="not-checked"
+theme_applied_theme="not-checked"
 if [ "$theme" = "light" ]; then
     # The light screenshot is part of the evidence set. Wait for the login
     # autostart command to finish applying the theme instead of capturing the
@@ -133,14 +134,20 @@ if [ "$theme" = "light" ]; then
     theme_applied=""
     if [ -r "$THEME_STATUS_FILE" ]; then
         theme_applied="$(sed -n 's/^applied=//p' "$THEME_STATUS_FILE" | head -n 1)"
+        theme_applied_theme="$(sed -n 's/^theme=//p' "$THEME_STATUS_FILE" | head -n 1)"
     fi
-    if [ "$theme_applied" != "1" ]; then
+    applied_scheme="$(read_key /home/eclipse/.config/kdeglobals General ColorScheme)"
+    applied_lookandfeel="$(read_key /home/eclipse/.config/kdeglobals KDE LookAndFeelPackage)"
+    if [ "$theme_applied" != "1" ] || [ "$theme_applied_theme" != "light" ] ||
+        [ "$applied_scheme" != "EclipseOSLight" ] ||
+        [ "$applied_lookandfeel" != "org.eclipseos.light.desktop" ]; then
         theme_status="failed"
-        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status}"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-missing} applied_lookandfeel=${applied_lookandfeel:-missing}"
         dump_theme_debug
         exit 1
     fi
     theme_status="applied"
+    dump_theme_debug
     sleep 3
 fi
 virt="$(systemd-detect-virt 2>/dev/null || true)"
@@ -152,7 +159,7 @@ fi
 vm_tuning=0
 [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.

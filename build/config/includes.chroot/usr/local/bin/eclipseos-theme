@@ -66,12 +66,23 @@ case "$action" in
         ;;
     apply)
         persist=0
-        if [ "$(current_scheme)" = "$light_scheme" ]; then
-            theme="light"
-        elif [ -r "$state_file" ]; then
-            theme="$(cat "$state_file")"
-        else
-            theme="dark"
+        # At login, the boot service has already selected the one-shot or saved
+        # theme in /run/eclipseos-theme. Prefer that value: Plasma may not yet
+        # have written the corresponding ColorScheme back to kdeglobals.
+        if [ -r /run/eclipseos-theme ]; then
+            boot_theme="$(cat /run/eclipseos-theme 2>/dev/null || true)"
+            case "$boot_theme" in
+                light|dark) theme="$boot_theme" ;;
+            esac
+        fi
+        if [ -z "${theme:-}" ]; then
+            if [ "$(current_scheme)" = "$light_scheme" ]; then
+                theme="light"
+            elif [ -r "$state_file" ]; then
+                theme="$(cat "$state_file")"
+            else
+                theme="dark"
+            fi
         fi
         ;;
     status)
@@ -106,6 +117,10 @@ if [ "$persist" -eq 1 ]; then
     printf '%s\n' "$theme" > "$state_file"
     chmod 0644 "$state_file"
 fi
+
+printf 'start action=%s theme=%s scheme=%s lookandfeel=%s\n' \
+    "$action" "$theme" "$scheme" "$lookandfeel" \
+    >>"$theme_debug_file" 2>/dev/null || true
 
 # Apply the global theme, then re-assert the three visible Plasma layers:
 # colour scheme, widget/desktop theme and wallpaper. Applying the global theme
@@ -197,6 +212,16 @@ if [ "$applied" -eq 0 ]; then
             printf '\n[Theme]\nname=%s\n' "$plasma_theme" >> "$plasmarc"
         fi
     fi
+fi
+
+# Re-assert the selected keys after plasma-apply-lookandfeel. The KDE look and
+# feel manager writes some settings as KConfig defaults and can leave the
+# current group without a ColorScheme key; keeping explicit values makes the
+# live-session marker and the next login deterministic.
+if [ "$applied" -eq 1 ] && command -v kwriteconfig6 >/dev/null 2>&1; then
+    kwriteconfig6 --file "$config" --group KDE --key LookAndFeelPackage "$lookandfeel"
+    kwriteconfig6 --file "$config" --group General --key ColorScheme "$scheme"
+    kwriteconfig6 --file "$plasmarc" --group Theme --key name "$plasma_theme"
 fi
 
 # Make the change visible to applications that cache KGlobalSettings values.

@@ -34,7 +34,6 @@ theme="${theme:-dark}"
 printf '%s\n' "$theme" > /run/eclipseos-theme
 
 config=/home/eclipse/.config/kdeglobals
-[ -f "$config" ] || exit 0
 
 if [ "$theme" = "light" ]; then
     scheme=EclipseOSLight
@@ -45,10 +44,29 @@ else
 fi
 plasma_theme=default
 
-sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+if [ ! -f "$config" ]; then
+    mkdir -p "$(dirname "$config")"
+    printf '[KDE]\nLookAndFeelPackage=%s\n\n[General]\nColorScheme=%s\n' \
+        "$lookandfeel" "$scheme" > "$config"
+fi
+
+if grep -q '^ColorScheme=' "$config"; then
+    sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+elif grep -q '^\[General\]' "$config"; then
+    sed -i "/^\[General\]/a ColorScheme=$scheme" "$config"
+else
+    printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
+fi
 grep -qx "ColorScheme=$scheme" "$config" \
     || { printf 'eclipseos-theme: could not select the %s colour scheme\n' "$theme" >&2; exit 1; }
-sed -i "s/^LookAndFeelPackage=.*/LookAndFeelPackage=$lookandfeel/" "$config"
+
+if grep -q '^LookAndFeelPackage=' "$config"; then
+    sed -i "s/^LookAndFeelPackage=.*/LookAndFeelPackage=$lookandfeel/" "$config"
+elif grep -q '^\[KDE\]' "$config"; then
+    sed -i "/^\[KDE\]/a LookAndFeelPackage=$lookandfeel" "$config"
+else
+    printf '\n[KDE]\nLookAndFeelPackage=%s\n' "$lookandfeel" >> "$config"
+fi
 grep -qx "LookAndFeelPackage=$lookandfeel" "$config" \
     || { printf 'eclipseos-theme: could not select the %s look and feel\n' "$theme" >&2; exit 1; }
 chown eclipse:eclipse "$config"
@@ -61,7 +79,13 @@ chown eclipse:eclipse "$config"
 # "default" and the colour scheme selects the light/dark rendering.
 plasmarc=/home/eclipse/.config/plasmarc
 if [ -f "$plasmarc" ]; then
-    sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"
+    if grep -q '^name=' "$plasmarc"; then
+        sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"
+    elif grep -q '^\[Theme\]' "$plasmarc"; then
+        sed -i "/^\[Theme\]/a name=$plasma_theme" "$plasmarc"
+    else
+        printf '\n[Theme]\nname=%s\n' "$plasma_theme" >> "$plasmarc"
+    fi
 else
     printf '[Theme]\nname=%s\n' "$plasma_theme" > "$plasmarc"
 fi
