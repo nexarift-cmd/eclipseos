@@ -16,6 +16,8 @@ MARKER_PREFIX="ECLIPSEOS_BOOT_OK"
 FAIL_PREFIX="ECLIPSEOS_BOOT_FAIL"
 SERIAL_DEVICE="/dev/ttyS0"
 SESSION_TIMEOUT=180
+THEME_STATUS_FILE="/home/eclipse/.cache/eclipseos-theme/last"
+THEME_DEBUG_FILE="/home/eclipse/.cache/eclipseos-theme/debug.log"
 
 read_key() {
     file="$1"
@@ -37,6 +39,14 @@ emit() {
     if [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ]; then
         printf '%s\n' "$1" > "$SERIAL_DEVICE"
     fi
+}
+
+dump_theme_debug() {
+    [ -r "$THEME_DEBUG_FILE" ] || return 0
+    [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ] || return 0
+    printf 'ECLIPSEOS_THEME_DEBUG_BEGIN\n' > "$SERIAL_DEVICE"
+    tail -n 30 "$THEME_DEBUG_FILE" > "$SERIAL_DEVICE" 2>/dev/null || true
+    printf 'ECLIPSEOS_THEME_DEBUG_END\n' > "$SERIAL_DEVICE"
 }
 
 # Never report success for a non-live system. The installed OS must not carry
@@ -111,6 +121,28 @@ theme="dark"
 if [ -r /run/eclipseos-theme ]; then
     theme="$(cat /run/eclipseos-theme 2>/dev/null || printf dark)"
 fi
+theme_status="not-checked"
+if [ "$theme" = "light" ]; then
+    # The light screenshot is part of the evidence set. Wait for the login
+    # autostart command to finish applying the theme instead of capturing the
+    # desktop while plasma-apply-lookandfeel is still switching it.
+    theme_deadline=$(( $(date +%s) + 45 ))
+    while [ "$(date +%s)" -lt "$theme_deadline" ] && [ ! -r "$THEME_STATUS_FILE" ]; do
+        sleep 1
+    done
+    theme_applied=""
+    if [ -r "$THEME_STATUS_FILE" ]; then
+        theme_applied="$(sed -n 's/^applied=//p' "$THEME_STATUS_FILE" | head -n 1)"
+    fi
+    if [ "$theme_applied" != "1" ]; then
+        theme_status="failed"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status}"
+        dump_theme_debug
+        exit 1
+    fi
+    theme_status="applied"
+    sleep 3
+fi
 virt="$(systemd-detect-virt 2>/dev/null || true)"
 virt="${virt:-none}"
 selection="unknown"
@@ -120,7 +152,7 @@ fi
 vm_tuning=0
 [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.
