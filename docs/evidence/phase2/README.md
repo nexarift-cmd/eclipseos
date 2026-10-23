@@ -7,8 +7,8 @@ actually observed, including failed experiments and the QEMU/VirtualBox split.
 
 | Check | QEMU (CI) | Real VirtualBox | Real hardware |
 | --- | --- | --- | --- |
-| Phase 2 default boot, UEFI + BIOS | **Passed** in run 39903705903 at 1280x800 | **Not run on the final ISO**; a manual BIOS boot of `768a4f9` reached the desktop | Not tested |
-| VirtualBox storage profile (UEFI, pc/IDE, 2048 MiB) | **Passed** in run 39903705903 at 1280x800 | BIOS manual pass at 3000 MiB on `768a4f9`; UEFI not run | Not applicable |
+| Phase 2 default boot, UEFI + BIOS | **Passed** in run 39908248658 at 1280x800 | **Not run on the final ISO**; a manual BIOS boot of `768a4f9` reached the desktop | Not tested |
+| VirtualBox storage profile (UEFI, pc/IDE, 2048 MiB) | **Passed** in run 39908248658 at 1280x800 | BIOS manual pass at 3000 MiB on `768a4f9`; UEFI not run | Not applicable |
 | Plasma X11 in a VM | **Passed**: `session=x11`, `virt=kvm`, `selection=eclipseos-x11` | Manual boot reached the desktop; the marker was not captured | Not applicable |
 | Plasma desktop at 1920x1080 | **Passed** for both dark and light | Not captured at 1920x1080 | Not captured |
 | Light theme boot | **Passed**: genuine light wallpaper and light panel, `theme_status=applied`, `applied_theme=light` | Runtime light switch reported working by the owner on `768a4f9` | Not tested |
@@ -30,28 +30,28 @@ not prove VMSVGA behaviour in VirtualBox, Guest Additions integration, a real
 greeter login, the power-off interaction or real-hardware Wayland. Those
 remain manual gates.
 
-## Final QEMU build: run 39903705903
+## Final QEMU build: run 39908248658
 
 GitHub Actions [run
-39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
-from commit `0dd6f0f` passed the static checks, built the ISO and passed all
+39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+from commit `716378a` passed the static checks, built the ISO and passed all
 six QEMU boots:
 
 | Boot | Result | Size | Evidence |
 | --- | --- | --- | --- |
 | UEFI q35, default dark | Pass | 1280x800 | [screenshot](qemu-uefi-1280x800.png), [result](qemu-uefi-1280x800-result.json) |
-| BIOS q35, default dark | Pass | 1280x800 | artifact JSON in CI run 39903705903 |
-| UEFI pc/IDE, VirtualBox storage profile, 2048 MiB | Pass | 1280x800 | artifact JSON in CI run 39903705903 |
+| BIOS q35, default dark | Pass | 1280x800 | artifact JSON in CI run 39908248658 |
+| UEFI pc/IDE, VirtualBox storage profile, 2048 MiB | Pass | 1280x800 | artifact JSON in CI run 39908248658 |
 | BIOS q35, one-shot light, EDID 1920x1080 | Pass | 1920x1080 | [screenshot](qemu-1920-light.png), [result](qemu-1920-light-result.json), [serial transcript](qemu-1920-light-serial.txt) |
 | UEFI q35, dark, EDID 1920x1080 (capture taken after the Firefox launch) | Pass | 1920x1080 | [screenshot](qemu-1920-dark.png), [result](qemu-1920-dark-result.json) |
 | UEFI q35, greeter, EDID 1920x1080 | Pass | 1920x1080 | [screenshot](qemu-sddm-greeter.png), [result](qemu-sddm-greeter-result.json) |
 
 - ISO: `eclipseos-26.10-amd64.iso`
 - ISO SHA-256:
-  `0e8497bda36da7d371a93e35fe37547282a56586d1e5338e94f432569d96aa10`
+  `875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`
 - ISO size: `1,503,243,197` bytes.
-- ISO artifact: `12480521603`.
-- Test evidence artifact: `12479889519`.
+- ISO artifact: `12482665020`.
+- Test evidence artifact: `12481998046`.
 
 The three default boots reported:
 
@@ -125,7 +125,7 @@ The earlier 2048 MiB Phase 2 report for commit `78474f5` remains in
 [`virtualbox-2048-manual.md`](virtualbox-2048-manual.md); it predates the
 Firefox, light-theme, SDDM and VM-tuning changes.
 
-The **final `0dd6f0f` ISO was not booted in real VirtualBox** because the local
+The **final `716378a` ISO was not booted in real VirtualBox** because the local
 download of the 1.5 GB artifact did not complete. The final ISO is covered by
 the QEMU evidence above. This is an explicit limitation of this acceptance
 record, not a claim that QEMU is a substitute for VirtualBox VMSVGA.
@@ -143,7 +143,7 @@ Run [39902097199](https://github.com/nexarift-cmd/eclipseos/actions/runs/3990209
 from `0cb6c5e` produced a genuinely light 1920x1080 screenshot, but the QEMU
 light test was marked failed because the new gate called `read_key` with a
 group argument it does not accept. The screenshot was correct; the gate read a
-key literally named `General`/`KDE`. Run 39903705903 fixes that gate and is the
+key literally named `General`/`KDE`. Run 39908248658 fixes that gate and is the
 accepted QEMU evidence set. The broken intermediate screenshot is not included
 in this directory.
 
@@ -182,7 +182,7 @@ unverified because no physical test was performed.
 
 ## Outstanding acceptance evidence
 
-- A real VirtualBox run of the final `0dd6f0f` ISO, at least at 2048 MiB and
+- A real VirtualBox run of the final `716378a` ISO, at least at 2048 MiB and
   preferably at 3000 MiB.
 - A real VirtualBox UEFI boot of a Phase 2 ISO with firmware mode, screenshot
   and serial log recorded.

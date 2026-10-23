@@ -40,9 +40,9 @@ action, tray-control clicks or a greeter login. Those remain unverified.
 
 ## Scope and limitations
 
-- This report is for `768a4f9`, not the final `0dd6f0f` ISO. The final ISO has
+- This report is for `768a4f9`, not the final `716378a` ISO. The final ISO has
   additional light-theme and boot-check fixes and is covered by QEMU run
-  39903705903.
+  39908248658.
 - Only BIOS firmware was tested. Real VirtualBox UEFI remains open.
 - 3000 MiB is above the 2048 MiB minimum but is not the recommended 4096 MiB.
   4096 MiB could not be tested on this host.

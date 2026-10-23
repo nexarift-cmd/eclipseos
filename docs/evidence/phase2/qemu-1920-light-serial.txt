@@ -1,7 +1,6 @@
-Sanitised transcript of the serial console for the 1920x1080 light boot.
+Serial-console transcript for the 1920x1080 light boot in run 39908248658.
 Raw ANSI terminal control sequences and timing padding have been removed;
 the result JSON and the raw evidence artifact retain the original log.
-
 EclipseOS 26.10 eclipseos ttyS0
 eclipseos login: ECLIPSEOS_THEME_DEBUG_BEGIN
 start action=apply theme=light scheme=EclipseOSLight lookandfeel=org.eclipseos.light.desktop

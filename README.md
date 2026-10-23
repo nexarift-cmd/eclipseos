@@ -32,19 +32,19 @@ update experience. The upstream components are credited in
 > and the [Phase 1 evidence index](docs/evidence/phase1/README.md).
 >
 > **Phase 2 is a candidate, not fully accepted.** GitHub Actions
-> [run 39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
-> from commit `0dd6f0f` passed six QEMU boots: UEFI, BIOS and the
+> [run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+> from commit `716378a` passed six QEMU boots: UEFI, BIOS and the
 > VirtualBox-storage-profile gate, plus genuine 1920x1080 light and dark
 > desktops and the branded SDDM greeter. The captured Start menu opens,
 > searches for Firefox and launches the browser with the offline EclipseOS
 > start page. The final ISO is
 > `eclipseos-26.10-amd64.iso`
-> (SHA256 `0e8497bda36da7d371a93e35fe37547282a56586d1e5338e94f432569d96aa10`).
+> (SHA256 `875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`).
 > The project owner booted the earlier `768a4f9` ISO in VirtualBox 7.2.20 at
 > 3000 MiB with EFI off (BIOS, VMSVGA); the desktop was reached, lag was
 > improved, Firefox showed the start page, the power menu was visible, the
 > live light-theme switch worked and no problems were reported. Phase 2 is
-> still open on a real-VirtualBox run of the final `0dd6f0f` ISO, VirtualBox
+> still open on a real-VirtualBox run of the final `716378a` ISO, VirtualBox
 > UEFI, 4096 MiB, actual Start-menu power-off, tray-control interaction,
 > greeter login and real-hardware Wayland. See
 > [`docs/evidence/phase2`](docs/evidence/phase2/README.md) for the exact
@@ -236,10 +236,10 @@ evidence directory, and 4096 MiB is recommended but untested here. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
 
-[Run 39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
+[Run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
 is the final Phase 2 QEMU evidence set. It passed the three default boot gates
 plus the 1920x1080 light, dark and SDDM greeter captures. The ISO SHA-256 is
-`0e8497bda36da7d371a93e35fe37547282a56586d1e5338e94f432569d96aa10`.
+`875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`.
 The final ISO has not yet been re-run in real VirtualBox; the manual BIOS
 report covers the earlier `768a4f9` ISO.
 

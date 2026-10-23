@@ -5,10 +5,10 @@ accepted.** This document describes the target product and the current
 subset. Phase 1 used LightDM + openbox + xterm/feh; the Phase 2 candidate
 replaces that session with SDDM + Plasma and adds the branded shell, Firefox
 ESR, light/dark switching, VM tuning and a custom greeter. Final Phase 2 QEMU
-run 39903705903 passed UEFI, BIOS, the VirtualBox storage profile and
+run 39908248658 passed UEFI, BIOS, the VirtualBox storage profile and
 1920x1080 light, dark and greeter captures. A real VirtualBox BIOS boot at
 3000 MiB reached the desktop on the earlier `768a4f9` ISO, but the final
-`0dd6f0f` ISO was not re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the
+`716378a` ISO was not re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the
 start-menu power-off action, tray interaction, greeter login and
 real-hardware Wayland remain open. See
 [`evidence/phase2`](evidence/phase2/README.md). This document is design and

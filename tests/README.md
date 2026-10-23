@@ -32,8 +32,8 @@ QEMU runs are virtual machines, so `eclipseos-session.service` makes them
 report `session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value
 is provided by `systemd-detect-virt`; KVM is expected on the CI runner.
 
-Run [39903705903](https://github.com/nexarift-cmd/eclipseos/actions/runs/39903705903)
-from commit `0dd6f0f` is the final Phase 2 QEMU evidence set. It passed the
+Run [39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+from commit `716378a` is the final Phase 2 QEMU evidence set. It passed the
 UEFI, BIOS and VirtualBox-storage-profile gates at 1280x800, plus the
 1920x1080 light, dark and SDDM greeter captures. The default marker was:
 
