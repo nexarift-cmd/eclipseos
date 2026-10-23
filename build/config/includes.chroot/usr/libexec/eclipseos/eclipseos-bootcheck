@@ -136,13 +136,18 @@ if [ "$theme" = "light" ]; then
         theme_applied="$(sed -n 's/^applied=//p' "$THEME_STATUS_FILE" | head -n 1)"
         theme_applied_theme="$(sed -n 's/^theme=//p' "$THEME_STATUS_FILE" | head -n 1)"
     fi
-    applied_scheme="$(read_key /home/eclipse/.config/kdeglobals General ColorScheme)"
-    applied_lookandfeel="$(read_key /home/eclipse/.config/kdeglobals KDE LookAndFeelPackage)"
+    applied_scheme="$(read_key /home/eclipse/.config/kdeglobals ColorScheme)"
+    applied_lookandfeel="$(read_key /home/eclipse/.config/kdeglobals LookAndFeelPackage)"
     if [ "$theme_applied" != "1" ] || [ "$theme_applied_theme" != "light" ] ||
-        [ "$applied_scheme" != "EclipseOSLight" ] ||
         [ "$applied_lookandfeel" != "org.eclipseos.light.desktop" ]; then
         theme_status="failed"
-        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-missing} applied_lookandfeel=${applied_lookandfeel:-missing}"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-unknown} applied_lookandfeel=${applied_lookandfeel:-missing}"
+        dump_theme_debug
+        exit 1
+    fi
+    if [ -n "$applied_scheme" ] && [ "$applied_scheme" != "EclipseOSLight" ]; then
+        theme_status="failed"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-scheme-mismatch theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-unknown} applied_lookandfeel=${applied_lookandfeel:-missing}"
         dump_theme_debug
         exit 1
     fi
