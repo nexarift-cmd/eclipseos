@@ -36,7 +36,10 @@ for file in \
     /etc/xdg/autostart/org.eclipseos.theme-apply.desktop \
     /etc/plymouth/plymouthd.conf \
     /etc/firefox-esr/firefox-esr.js \
+    /etc/xdg/autostart/org.eclipseos.display-guard.desktop \
     /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-plasma-x11 \
+    /usr/local/bin/eclipseos-display \
     /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-session-select \
@@ -82,6 +85,8 @@ done
 
 for file in \
     /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-plasma-x11 \
+    /usr/local/bin/eclipseos-display \
     /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
     /usr/libexec/eclipseos/eclipseos-session-select \
@@ -173,8 +178,14 @@ grep -q 'Session=[$]session' /usr/libexec/eclipseos/eclipseos-session-select \
 
 grep -q '^Exec=/usr/local/bin/eclipseos-plasma-session$' /usr/share/wayland-sessions/eclipseos-wayland.desktop \
     || fail 'the Wayland session does not launch the EclipseOS session wrapper'
-grep -q '^Exec=/usr/bin/startplasma-x11$' /usr/share/xsessions/eclipseos-x11.desktop \
-    || fail 'the X11 fallback session does not launch Plasma'
+grep -q '^Exec=/usr/local/bin/eclipseos-plasma-x11$' /usr/share/xsessions/eclipseos-x11.desktop \
+    || fail 'the X11 session does not launch the EclipseOS display wrapper'
+grep -q '^exec /usr/bin/startplasma-x11$' /usr/local/bin/eclipseos-plasma-x11 \
+    || fail 'the X11 session wrapper does not launch Plasma'
+grep -q 'eclipseos-display fit' /usr/local/bin/eclipseos-plasma-x11 \
+    || fail 'the X11 session wrapper does not fit the VM display'
+grep -q 'panel.offset = 0' /usr/share/plasma/look-and-feel/org.eclipseos.desktop/contents/layouts/org.kde.plasma.desktop-layout.js \
+    || fail 'the default panel layout does not pin its horizontal offset'
 
 grep -qx 'LookAndFeelPackage=org.eclipseos.desktop' /etc/xdg/kdeglobals \
     || fail 'the EclipseOS Plasma look and feel is not the system default'
