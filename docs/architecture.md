@@ -4,14 +4,14 @@ Status: **Phase 1 is accepted; Phase 2 is a verified candidate, not fully
 accepted.** This document describes the target product and the current
 subset. Phase 1 used LightDM + openbox + xterm/feh; the Phase 2 candidate
 replaces that session with SDDM + Plasma and adds the branded shell, Firefox
-ESR, light/dark switching, VM tuning and a custom greeter. Final Phase 2 QEMU
-run 39908248658 passed UEFI, BIOS, the VirtualBox storage profile and
-1920x1080 light, dark and greeter captures. A real VirtualBox BIOS boot at
-3000 MiB reached the desktop on the earlier `768a4f9` ISO, but the final
-`716378a` ISO was not re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the
-start-menu power-off action, tray interaction, greeter login and
-real-hardware Wayland remain open. See
-[`evidence/phase2`](evidence/phase2/README.md). This document is design and
+ESR, light/dark switching, VM tuning, a VM display fitter/panel guard and a
+custom greeter. Phase 2 QEMU run 40113308256 passed UEFI, BIOS, the VirtualBox
+storage profile, the 1366x768 fitted-display/panel gate and 1920x1080 light,
+dark and greeter captures. A real VirtualBox BIOS boot at 3000 MiB reached the
+desktop on the earlier `768a4f9` ISO, but the final `41645a9` ISO was not
+re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the start-menu power-off
+action, tray interaction, greeter login and real-hardware Wayland remain open.
+See [`evidence/phase2`](evidence/phase2/README.md). This document is design and
 policy, not boot evidence; see [`evidence/phase1`](evidence/phase1/README.md)
 and [build-environment.md](build-environment.md).
 
@@ -293,22 +293,33 @@ earlier session wrapper therefore no longer claims to do that.
 
 Virtual-machine X11 sessions also enter through
 `/usr/local/bin/eclipseos-plasma-x11`. Before Plasma creates its panel,
-`eclipseos-display fit` selects the largest mode advertised by the virtual
-output that fits a conservative 1280x720 target. VirtualBox VMSVGA starts at
+`eclipseos-display fit` looks for the exact conservative 1280x720 target among
+the modes advertised by the virtual output. VirtualBox VMSVGA starts at
 1280x800 without Guest Additions; that guest mode is taller than a 1366x768
 host once the VM window decoration is included, so the bottom of the guest
-desktop and its panel are outside the visible window. The fitter tries a CVT
-1280x720 modeline when the adapter does not advertise that mode, then falls
-back to the adapter's own modes. `eclipseos.display=WxH` overrides the target
-and `eclipseos.display=keep` preserves a fixed EDID size for screenshot
-evidence. Physical machines and Wayland sessions are never changed.
+desktop and its panel are outside the visible window. If 1280x720 is not
+advertised, the fitter adds a CVT 1280x720 modeline (including a built-in
+modeline when the `cvt` helper is absent). Only if that fails does it choose
+the largest advertised mode inside the target. It never accepts a mode taller
+than 1280x720 merely because the adapter exposes one. `eclipseos.display=WxH`
+overrides the target and `eclipseos.display=keep` preserves a fixed EDID size
+for screenshot evidence. Physical machines and Wayland sessions are never
+changed.
 
-The display guard autostart runs after Plasma. It puts every panel back on the
-bottom edge (`location=bottom`, centred, zero offset) and watches `xrandr` for
-runtime resolution changes, re-anchoring the panel after each change. The
-panel layout also sets `offset=0` explicitly. The 1366x768 QEMU gate measures
-the produced framebuffer and the panel's top and bottom edges; it does not
-infer visibility from the guest's chosen resolution alone.
+The display guard autostart runs after Plasma. It first reasserts the display
+fit, because Plasma/KScreen can reset the mode while starting, then puts every
+panel back on the bottom edge (`location=bottom`, centred, zero offset) and
+watches `xrandr` for runtime resolution changes, re-anchoring the panel after
+each change. It retries until a panel actually exists rather than treating the
+Plasma D-Bus service's appearance as readiness. The panel layout also sets
+`offset=0` explicitly. The guard writes `display_*` and `guard_*` fields plus a
+diagnostic file. The pre-Plasma fit adds the CVT modeline; the guard's later
+status records `display_source=modeline` and `display_modeline=existing`
+because it found the mode already present on the passing QEMU path. The
+1366x768 QEMU gate measures the produced framebuffer and the panel's
+top and bottom edges; it does not infer visibility from the guest's chosen
+resolution alone. Run 40113308256 fitted a 1366x768 initial mode to 1280x720
+and detected the panel at rows 663-711.
 
 ## 6. Installer design
 

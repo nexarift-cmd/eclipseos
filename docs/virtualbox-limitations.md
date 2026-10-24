@@ -9,10 +9,10 @@ and the ISO does not pretend otherwise.
 
 | Capability | Status in the EclipseOS ISO | Notes |
 | --- | --- | --- |
-| Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
+| Boot in VirtualBox UEFI and BIOS | **Phase 1 verified at 2048 MiB; final Phase 2 ISO not yet re-run** | EFI and BIOS both reached the Phase 1 live desktop on 2026-10-20. The Phase 2 BIOS boot on `768a4f9` reached the desktop at 3000 MiB. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
 | Graphics controller | VMSVGA | Selected by `scripts/create-vbox-vm.sh`; 128 MiB video RAM. |
-| Basic desktop rendering | Verified at 2048 MiB via X11/openbox | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
-| Automatic guest resolution / window resize | **Partial, VM-safe default only** | Host-window resize still requires Guest Additions. The EclipseOS X11 session now picks the largest virtual mode inside 1280x720 before Plasma starts, because VMSVGA's 1280x800 default is taller than a 1366x768 host window. The user can still change mode with `xrandr`; Guest Additions are not bundled. |
+| Basic desktop rendering | Phase 1 verified at 2048 MiB via X11/openbox; Phase 2 verified in QEMU only | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. The final Phase 2 ISO has not been inspected in real VirtualBox. |
+| Automatic guest resolution / window resize | **Partial, VM-safe default only** | Host-window resize still requires Guest Additions. The EclipseOS X11 session tries the exact 1280x720 mode first, adds a CVT 1280x720 modeline if it is absent, and only then accepts a smaller advertised mode inside that target. The post-Plasma guard reasserts the fit and re-anchors the bottom panel. VMSVGA's 1280x800 default is taller than a 1366x768 host window. The user can still change mode with `xrandr`; Guest Additions are not bundled. |
 | Seamless mouse integration | **Not available** | The guest uses a relative pointer. Use VirtualBox's host key to release the pointer. |
 | Shared clipboard | **Not available** | No Guest Additions. Clipboard settings in the VM do nothing useful. |
 | Shared folders | **Not available** | No Guest Additions. |
@@ -93,11 +93,13 @@ seamless VirtualBox integration a user gets with Guest Additions.
 
 These are host-side or user-side options, not features of the ISO:
 
-- **Resolution:** the X11 session starts at the largest advertised mode that
-  fits 1280x720, normally 1280x720. Run `xrandr` to list modes or select
-  another mode. Do not expect arbitrary host-window resizing; that requires
-  Guest Additions. `eclipseos.display=keep` on the kernel command line keeps
-  the adapter default, and `eclipseos.display=WxH` requests another target.
+- **Resolution:** the X11 session starts at exactly 1280x720 when the adapter
+  advertises it, or adds a CVT 1280x720 modeline when it does not. If that
+  fails, it uses the largest advertised mode inside the 1280x720 target. Run
+  `xrandr` to list modes or select another mode. Do not expect arbitrary
+  host-window resizing; that requires Guest Additions.
+  `eclipseos.display=keep` on the kernel command line keeps the adapter
+  default, and `eclipseos.display=WxH` requests another target.
 - **Pointer:** use the VirtualBox host key (usually Right Ctrl) to release the
   pointer from the guest.
 - **File transfer:** attach a second virtual disk, use a network service you
@@ -130,10 +132,18 @@ yourself, enable those features in VirtualBox afterwards.
 
 ## Acceptance status
 
-VirtualBox 7.2.20 booted the ISO in EFI and BIOS modes on 2026-10-20. Both
-sessions reached the live X11 desktop, with the GRUB menu and desktop captured
-in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2 vCPUs,
-128 MiB VMSVGA video and a 25 GiB disk.
+VirtualBox 7.2.20 booted the Phase 1 ISO in EFI and BIOS modes on 2026-10-20.
+Both sessions reached the live X11 desktop, with the GRUB menu and desktop
+captured in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2
+vCPUs, 128 MiB VMSVGA video and a 25 GiB disk.
+
+Phase 2 QEMU run 40113308256 booted the final candidate seven times, including
+three fitted default boots and a 1366x768 EDID/panel gate at 1280x720. That is
+QEMU std-VGA evidence, not VirtualBox VMSVGA evidence. The final Phase 2 ISO from
+`41645a9` has **not** been booted in real VirtualBox; only the earlier
+`768a4f9` ISO reached a VirtualBox BIOS desktop at 3000 MiB. See
+[`evidence/phase2`](evidence/phase2/README.md) for the artifact and the
+remaining gates.
 
 **2048 MiB is the accepted VirtualBox acceptance size on this host.** The
 script's 4096 MiB setting is the recommended configuration, but it could not be

@@ -40,9 +40,10 @@ action, tray-control clicks or a greeter login. Those remain unverified.
 
 ## Scope and limitations
 
-- This report is for `768a4f9`, not the final `716378a` ISO. The final ISO has
-  additional light-theme and boot-check fixes and is covered by QEMU run
-  39908248658.
+- This report is for `768a4f9`, not the final `41645a9` ISO. The final ISO adds
+  the VM display fitter, the post-Plasma panel guard, the 1366x768 gate and
+  display diagnostics; it is covered by QEMU run 40113308256, not by this
+  manual VirtualBox report.
 - Only BIOS firmware was tested. Real VirtualBox UEFI remains open.
 - 3000 MiB is above the 2048 MiB minimum but is not the recommended 4096 MiB.
   4096 MiB could not be tested on this host.

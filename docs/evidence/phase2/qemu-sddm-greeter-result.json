@@ -1,32 +1,38 @@
 {
-  "timestamp_utc": "2026-10-23T06:05:00+00:00",
+  "timestamp_utc": "2026-10-24T17:02:25+00:00",
   "firmware": "uefi",
   "machine": "q35",
   "vga": "std",
   "video_edid": "1920x1080",
+  "expect_display": null,
+  "check_panel": false,
   "optical": "auto",
   "boot_mode": "direct-kernel",
   "close_welcome": false,
-  "kernel": "/tmp/eclipseos-boot.hCq4GR/kernel",
-  "initrd": "/tmp/eclipseos-boot.hCq4GR/initrd",
-  "kernel_append": "boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8 eclipseos.autologin=off",
+  "kernel": "/tmp/eclipseos-boot.IF9nyp/kernel",
+  "initrd": "/tmp/eclipseos-boot.IF9nyp/initrd",
+  "kernel_append": "boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8 eclipseos.autologin=off eclipseos.display=keep",
   "iso": "/work/eclipseos-26.10-amd64.iso",
-  "iso_sha256": "875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea",
+  "iso_sha256": "97fd89e2e82d4ecd006ba584aea8a719d3b8ff0a3471d90dd0c0db611d31af20",
   "duration_seconds": 26.3,
-  "marker": "eclipseos login: ECLIPSEOS_BOOT_OK stage=greeter session=greeter theme=dark scheme=EclipseOS plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0",
+  "marker": "eclipseos login: ECLIPSEOS_BOOT_OK stage=greeter session=greeter theme=dark scheme=EclipseOS plasma_theme=default lookandfeel=org.eclipseos.desktop display=unknown display_initial=unknown display_mode=unknown display_output=unknown display_target=unknown display_source=unknown display_modeline=unknown virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0",
   "failure_marker": "",
   "failed_units": 0,
-  "screenshot": "/work/tests/out/20261023T060434Z-uefi-q35-auto-std-direct-live-edid-1920x1080/screenshot.png",
+  "screenshot": "/work/tests/out/20261024T170159Z-uefi-q35-auto-std-direct-live-edid-1920x1080/screenshot.png",
   "screenshot_info": {
     "width": 1920,
     "height": 1080,
     "sampled_pixels": 103680,
-    "non_black_ratio": 0.99946,
-    "unique_colours": 1330,
-    "meaningful": true
+    "non_black_ratio": 0.999219,
+    "unique_colours": 1359,
+    "meaningful": true,
+    "panel": {
+      "visible": false,
+      "reason": "no panel edge found"
+    }
   },
   "early_screenshots": [
-    "/work/tests/out/20261023T060434Z-uefi-q35-auto-std-direct-live-edid-1920x1080/boot-01-0008s.png"
+    "/work/tests/out/20261024T170159Z-uefi-q35-auto-std-direct-live-edid-1920x1080/boot-01-0008s.png"
   ],
   "startmenu_screenshots": [],
   "result": "pass",

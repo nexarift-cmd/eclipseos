@@ -32,19 +32,21 @@ update experience. The upstream components are credited in
 > and the [Phase 1 evidence index](docs/evidence/phase1/README.md).
 >
 > **Phase 2 is a candidate, not fully accepted.** GitHub Actions
-> [run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
-> from commit `716378a` passed six QEMU boots: UEFI, BIOS and the
-> VirtualBox-storage-profile gate, plus genuine 1920x1080 light and dark
-> desktops and the branded SDDM greeter. The captured Start menu opens,
-> searches for Firefox and launches the browser with the offline EclipseOS
-> start page. The final ISO is
+> [run 40113308256](https://github.com/nexarift-cmd/eclipseos/actions/runs/40113308256)
+> from branch head `41645a9` passed seven QEMU boots: UEFI, BIOS, the
+> VirtualBox-storage-profile gate, the 1366x768 fitted-display/panel gate,
+> genuine 1920x1080 light and dark desktops, and the branded SDDM greeter.
+> The VM boots fit 1280x800 or 1366x768 host modes to exactly 1280x720; the
+> 1366x768 gate verified that the whole bottom panel was visible. The captured
+> Start menu opens, searches for Firefox and launches the browser with the
+> offline EclipseOS start page. The current ISO is
 > `eclipseos-26.10-amd64.iso`
-> (SHA256 `875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`).
+> (SHA256 `97fd89e2e82d4ecd006ba584aea8a719d3b8ff0a3471d90dd0c0db611d31af20`).
 > The project owner booted the earlier `768a4f9` ISO in VirtualBox 7.2.20 at
 > 3000 MiB with EFI off (BIOS, VMSVGA); the desktop was reached, lag was
 > improved, Firefox showed the start page, the power menu was visible, the
 > live light-theme switch worked and no problems were reported. Phase 2 is
-> still open on a real-VirtualBox run of the final `716378a` ISO, VirtualBox
+> still open on a real-VirtualBox run of the final `41645a9` ISO, VirtualBox
 > UEFI, 4096 MiB, actual Start-menu power-off, tray-control interaction,
 > greeter login and real-hardware Wayland. See
 > [`docs/evidence/phase2`](docs/evidence/phase2/README.md) for the exact
@@ -54,7 +56,7 @@ update experience. The upstream components are credited in
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
 | 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | **Complete and accepted at 2048 MiB**; final QEMU UEFI/BIOS + VirtualBox storage-profile pass; VirtualBox EFI/BIOS pass; 4096 MiB recommended but untested here |
-| 2 | Plasma desktop, taskbar, Start menu, themes | **Candidate:** QEMU UEFI/BIOS/VirtualBox-profile, 1920x1080 light/dark, SDDM, Start-menu search/launch and Firefox pass; VirtualBox 3000 MiB BIOS manual pass on `768a4f9`; final ISO VirtualBox, UEFI, power-off, tray, greeter login and real-hardware Wayland still open |
+| 2 | Plasma desktop, taskbar, Start menu, themes | **Candidate:** QEMU UEFI/BIOS/VirtualBox-profile, 1366x768 fitted-display/panel, 1920x1080 light/dark, SDDM, Start-menu search/launch and Firefox pass; VirtualBox 3000 MiB BIOS manual pass on `768a4f9`; final ISO VirtualBox, UEFI, power-off, tray, greeter login and real-hardware Wayland still open |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
 | 5 | Snap layouts, widgets, search, lock screen polish | Not started |
@@ -236,11 +238,12 @@ evidence directory, and 4096 MiB is recommended but untested here. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
 
-[Run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
-is the final Phase 2 QEMU evidence set. It passed the three default boot gates
-plus the 1920x1080 light, dark and SDDM greeter captures. The ISO SHA-256 is
-`875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`.
-The final ISO has not yet been re-run in real VirtualBox; the manual BIOS
+[Run 40113308256](https://github.com/nexarift-cmd/eclipseos/actions/runs/40113308256)
+is the current Phase 2 QEMU evidence set. It passed the three default boot
+gates, the 1366x768 fitted-display/panel gate, and the 1920x1080 light, dark
+and SDDM greeter captures. The ISO SHA-256 is
+`97fd89e2e82d4ecd006ba584aea8a719d3b8ff0a3471d90dd0c0db611d31af20`.
+The current ISO has not yet been re-run in real VirtualBox; the manual BIOS
 report covers the earlier `768a4f9` ISO.
 
 ## Security and privacy

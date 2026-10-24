@@ -1,10 +1,9 @@
-Serial-console transcript for the 1920x1080 light boot in run 39908248658.
-Raw ANSI terminal control sequences and timing padding have been removed;
-the result JSON and the raw evidence artifact retain the original log.
+[[0;32m  OK  [0m] Finished [0;1;39mplymouth-quit-wait.servic…[0mold until boot process finishes up.
+[!p]104[?7h[6n[32766;32766H[6n[!p]104[?7h[6n[32766;32766H[6n
 EclipseOS 26.10 eclipseos ttyS0
 eclipseos login: ECLIPSEOS_THEME_DEBUG_BEGIN
 start action=apply theme=light scheme=EclipseOSLight lookandfeel=org.eclipseos.light.desktop
 apply theme=light lookandfeel=org.eclipseos.light.desktop dbus=yes
 attempt lookandfeel=0 colours=0 desktoptheme=0 wallpaper_file=0 wallpaper=0
 ECLIPSEOS_THEME_DEBUG_END
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop display=1920x1080 display_initial=1920x1080 display_mode=unknown display_output=unknown display_target=keep display_source=keep display_modeline=none guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0

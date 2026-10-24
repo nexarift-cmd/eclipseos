@@ -28,38 +28,56 @@ all three gates: UEFI, BIOS, and the VirtualBox storage profile, the latter at
 
 The Phase 2 image replaces that session with SDDM and Plasma. Its marker
 reports `session=wayland` or `session=x11`, plus `theme=`, `theme_status=`,
-`applied_theme=`, `display=`, `display_source=`, `virt=`, `selection=`,
-`vm_tuning=` and `failed_units=`. `display=` is the mode recorded by
-`eclipseos-display` in the live user's runtime directory; `unknown` means the
-session did not record a mode.
+`applied_theme=`, `display=`, `display_initial=`, `display_mode=`,
+`display_output=`, `display_target=`, `display_source=`,
+`display_modeline=`, `guard=`, `guard_panel=`, `virt=`, `selection=`,
+`vm_tuning=` and `failed_units=`. `display=` is the final framebuffer recorded
+by `eclipseos-display` in the live user's runtime directory; `unknown` means
+the session did not record a mode.
 QEMU runs are virtual machines, so `eclipseos-session.service` makes them
 report `session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value
 is provided by `systemd-detect-virt`; KVM is expected on the CI runner.
 
-Run [39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
-from commit `716378a` is the final Phase 2 QEMU evidence set. It passed the
-UEFI, BIOS and VirtualBox-storage-profile gates at 1280x800, plus the
-1920x1080 light, dark and SDDM greeter captures. The default marker was:
+Run [40113308256](https://github.com/nexarift-cmd/eclipseos/actions/runs/40113308256)
+from branch head `41645a9` is the current Phase 2 QEMU evidence set. It passed
+the UEFI, BIOS, 1366x768 panel and VirtualBox-storage-profile gates at
+1280x720, plus the 1920x1080 light, dark and SDDM greeter captures. The default
+marker was:
 
 ```text
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop display=1280x720 display_initial=1280x800 display_mode=EclipseOS-1280x720 display_output=Virtual-1 display_target=1280x720 display_source=modeline display_modeline=existing guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
 ```
+
+The 1366x768 gate started from a 1366x768 EDID mode and reported:
+
+```text
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop display=1280x720 display_initial=1366x768 display_mode=EclipseOS-1280x720 display_output=Virtual-1 display_target=1280x720 display_source=modeline display_modeline=existing guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+```
+
+The final marker says `display_modeline=existing` because the pre-Plasma
+wrapper and the post-Plasma guard are separate `fit` invocations. The first
+invocation added the CVT modeline; the guard found it already present,
+re-selected it and re-anchored the panel. The final screenshot is exactly
+1280x720, and panel edge detection found the floating panel at rows 663-711
+with an 8 px gap. A 1360x768 or any taller result fails the gate.
 
 The light marker was:
 
 ```text
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=light theme_status=applied applied_theme=light scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.light.desktop display=1920x1080 display_initial=1920x1080 display_mode=unknown display_output=unknown display_target=keep display_source=keep display_modeline=none guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
 ```
 
 The light screenshot is genuinely light; the dark capture is dark and shows
 Firefox open after the Start-menu launch step. Both are 1920x1080 framebuffer
-captures, not upscales. `scheme=unknown` is
+captures, not upscales, because the visual targets pass
+`eclipseos.display=keep`. The light panel was detected at rows 1023-1077 and
+the dark panel at 1023-1071; both are fully visible. `scheme=unknown` is
 expected after Plasma applies a look-and-feel package: Plasma may remove the
 local `ColorScheme` key while retaining the rendered colours. The light gate
 checks the successful apply status, the applied theme and the light
 look-and-feel; the screenshot is the visual check.
 
-The final run also captured an open Kickoff menu, a `firefox` search result,
+The current run also captured an open Kickoff menu, a `firefox` search result,
 and Firefox ESR displaying the offline EclipseOS start page. The greeter
 capture shows the branded SDDM screen and the X11 session selection. Those
 captures and the result JSONs are in
@@ -121,15 +139,18 @@ The live image's `eclipseos-bootcheck` service must write a line like this to
 `/dev/ttyS0` once the session is actually usable:
 
 ```text
-ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
+ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop display=1280x720 display_initial=1280x800 display_mode=EclipseOS-1280x720 display_output=Virtual-1 display_target=1280x720 display_source=modeline display_modeline=existing guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0
 ```
 
-The greeter path writes a similar line with `stage=greeter session=greeter`.
-`vm_tuning=1` means `eclipseos-vm-tuning.service` detected a VM and applied
-the compositor settings; `0` is expected on physical hardware. On a one-shot
-light boot, the desktop marker additionally reports
-`theme_status=applied applied_theme=light` and
-`lookandfeel=org.eclipseos.light.desktop`.
+`display_target=keep` marks a visual-evidence boot that deliberately bypasses
+the fitter. `guard=ready guard_panel=1` means the post-Plasma display guard ran
+and found a panel; the 1366x768 gate additionally checks the panel edges in the
+screenshot. The greeter path writes a similar line with
+`stage=greeter session=greeter` and no panel. `vm_tuning=1` means
+`eclipseos-vm-tuning.service` detected a VM and applied the compositor
+settings; `0` is expected on physical hardware. On a one-shot light boot, the
+desktop marker additionally reports `theme_status=applied applied_theme=light`
+and `lookandfeel=org.eclipseos.light.desktop`.
 
 If the session does not start, it writes:
 
@@ -172,8 +193,12 @@ has no bottom edge and fails the check.
 
 `make test-1366x768` models the laptop that exposed the bug. QEMU exposes a
 1366x768 EDID host mode; the guest session must fit it to 1280x720, and the
-final screenshot must be exactly 1280x720 with both panel edges visible.
-`--video-edid` and `--expect-display` may differ for this reason.
+final screenshot must be exactly 1280x720 with both panel edges visible. It
+passed in run 40113308256: `display_initial=1366x768`, `display=1280x720`,
+`display_source=modeline`, and the panel edges were detected at rows 663 and
+711. `--video-edid` and `--expect-display` may differ for this reason. The
+capture and result JSON are in
+[`../docs/evidence/phase2`](../docs/evidence/phase2/README.md).
 
 QEMU tests use TCG when KVM is unavailable. They are slower but still valid;
 timing assertions must account for that.
