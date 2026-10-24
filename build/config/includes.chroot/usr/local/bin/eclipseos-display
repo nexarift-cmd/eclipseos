@@ -79,6 +79,34 @@ is_vm() {
         systemd-detect-virt --vm --quiet 2>/dev/null
 }
 
+debug_file() {
+    printf '%s/eclipseos-display-debug\n' "$(runtime_dir)"
+}
+
+write_display_debug() {
+    file="$(debug_file)"
+    {
+        printf 'time=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+        printf 'screen=%s initial=%s target=%s source=%s modeline=%s\n' \
+            "${screen:-unknown}" "${initial:-unknown}" "${target:-unknown}" \
+            "${source:-unknown}" "${modeline_status:-none}"
+        printf 'cmdline=%s\n' "$(cat /proc/cmdline 2>/dev/null)"
+        printf 'drm_driver=%s\n' "$(readlink -f /sys/class/drm/card0/device/driver 2>/dev/null)"
+        printf 'drm_connectors:\n'
+        for status in /sys/class/drm/card*-*/status; do
+            [ -r "$status" ] || continue
+            printf '%s=%s\n' "${status%/status}" "$(cat "$status" 2>/dev/null)"
+        done
+        printf 'xorg_log:\n'
+        grep -hE 'Loading|Using|modeset|bochs|fbdev|vmware|EE' \
+            /var/log/Xorg.0.log /var/log/Xorg.1.log 2>/dev/null |
+            tail -n 40
+        printf 'xrandr:\n'
+        "$XRANDR" --query 2>&1 | head -n 120
+    } >"$file"
+    chmod 0644 "$file" 2>/dev/null || true
+}
+
 write_status() {
     file="$(status_file)"
     install -d -m 0700 "$(dirname "$file")" 2>/dev/null || true
@@ -93,6 +121,7 @@ write_status() {
         printf 'virtual=%s\n' "${virtual:-1}"
     } >"$file"
     chmod 0644 "$file" 2>/dev/null || true
+    write_display_debug
 }
 
 screen_geometry() {

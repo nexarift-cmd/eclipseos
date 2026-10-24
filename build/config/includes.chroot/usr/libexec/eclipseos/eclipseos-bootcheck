@@ -75,6 +75,23 @@ dump_theme_debug() {
     printf 'ECLIPSEOS_THEME_DEBUG_END\n' > "$SERIAL_DEVICE"
 }
 
+dump_display_debug() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    display_file="/run/user/${live_uid}/eclipseos-display"
+    debug_file="/run/user/${live_uid}/eclipseos-display-debug"
+    [ -r "$debug_file" ] || return 0
+    debug_screen="$(read_key "$display_file" screen)"
+    debug_target="$(read_key "$display_file" target)"
+    debug_source="$(read_key "$display_file" source)"
+    [ "$debug_source" = "keep" ] && return 0
+    [ -n "$debug_screen" ] && [ -n "$debug_target" ] || return 0
+    [ "$debug_screen" != "$debug_target" ] || return 0
+    [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ] || return 0
+    printf 'ECLIPSEOS_DISPLAY_DEBUG_BEGIN\n' > "$SERIAL_DEVICE"
+    head -n 160 "$debug_file" > "$SERIAL_DEVICE" 2>/dev/null || true
+    printf 'ECLIPSEOS_DISPLAY_DEBUG_END\n' > "$SERIAL_DEVICE"
+}
+
 # Never report success for a non-live system. The installed OS must not carry
 # a unit that pretends to be a successful live boot.
 if ! grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
@@ -208,6 +225,7 @@ if [ "$virt" != "none" ]; then
 fi
 
 emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details)$(display_details)$(guard_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+dump_display_debug
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.
