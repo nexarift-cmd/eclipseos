@@ -38,9 +38,24 @@ display_details() {
     live_uid="$(id -u eclipse 2>/dev/null || true)"
     display_file="/run/user/${live_uid}/eclipseos-display"
     display="$(read_key "$display_file" screen)"
+    display_initial="$(read_key "$display_file" initial)"
+    display_mode="$(read_key "$display_file" mode)"
+    display_output="$(read_key "$display_file" output)"
+    display_target="$(read_key "$display_file" target)"
     display_source="$(read_key "$display_file" source)"
-    printf ' display=%s display_source=%s' \
-        "${display:-unknown}" "${display_source:-unknown}"
+    printf ' display=%s display_initial=%s display_mode=%s display_output=%s display_target=%s display_source=%s' \
+        "${display:-unknown}" "${display_initial:-unknown}" \
+        "${display_mode:-unknown}" "${display_output:-unknown}" \
+        "${display_target:-unknown}" "${display_source:-unknown}"
+}
+
+guard_details() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    guard_file="/run/user/${live_uid}/eclipseos-display-guard"
+    guard_state="$(read_key "$guard_file" state)"
+    guard_panel="$(read_key "$guard_file" panel)"
+    printf ' guard=%s guard_panel=%s' \
+        "${guard_state:-unknown}" "${guard_panel:-unknown}"
 }
 
 emit() {
@@ -173,7 +188,24 @@ fi
 vm_tuning=0
 [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details)$(display_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+# The X11 display guard reasserts the VM mode after KScreen's initial profile
+# pass and then marks itself ready. Wait briefly for that state so the serial
+# marker records the mode the QEMU screenshot will actually show. Physical
+# sessions do not run the guard and are not delayed.
+if [ "$virt" != "none" ]; then
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    guard_file="/run/user/${live_uid}/eclipseos-display-guard"
+    guard_deadline=$(( $(date +%s) + 20 ))
+    while [ "$(date +%s)" -lt "$guard_deadline" ]; do
+        guard_state="$(read_key "$guard_file" state)"
+        case "$guard_state" in
+            ready|failed) break ;;
+        esac
+        sleep 1
+    done
+fi
+
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details)$(display_details)$(guard_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.

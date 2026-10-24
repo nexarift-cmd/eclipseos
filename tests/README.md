@@ -5,12 +5,13 @@ Automated tests are a release gate. This directory will grow with the build.
 Current tests:
 
 - [`../scripts/test-qemu.sh`](../scripts/test-qemu.sh) — wrapper for headless
-  UEFI and BIOS boot tests, plus the VirtualBox storage-profile test (`pc`
-  machine, IDE optical drive, 2048 MiB, standard VGA).
+  UEFI and BIOS boot tests, the 1366x768 fitted-display/panel gate, plus the
+  VirtualBox storage-profile test (`pc` machine, IDE optical drive, 2048 MiB,
+  standard VGA).
 - [`qemu_boot_test.py`](qemu_boot_test.py) — QEMU/QMP driver: waits for a
   serial marker from the live desktop, captures early diagnostic screenshots
   and a final framebuffer screenshot, rejects failed units, boot-failure
-  markers and blank frames.
+  markers, blank frames and, in the 1366x768 gate, a clipped bottom panel.
 - [`../scripts/static-check.sh`](../scripts/static-check.sh) — shell syntax,
   ShellCheck, Python/JSON syntax and desktop-entry validation. Run with
   `make static-check`.
@@ -27,7 +28,10 @@ all three gates: UEFI, BIOS, and the VirtualBox storage profile, the latter at
 
 The Phase 2 image replaces that session with SDDM and Plasma. Its marker
 reports `session=wayland` or `session=x11`, plus `theme=`, `theme_status=`,
-`applied_theme=`, `virt=`, `selection=`, `vm_tuning=` and `failed_units=`.
+`applied_theme=`, `display=`, `display_source=`, `virt=`, `selection=`,
+`vm_tuning=` and `failed_units=`. `display=` is the mode recorded by
+`eclipseos-display` in the live user's runtime directory; `unknown` means the
+session did not record a mode.
 QEMU runs are virtual machines, so `eclipseos-session.service` makes them
 report `session=x11 virt=kvm selection=eclipseos-x11`. The exact `virt` value
 is provided by `systemd-detect-virt`; KVM is expected on the CI runner.
@@ -90,9 +94,11 @@ and the prevention of VISO creation are the regression checks.
 
 `make test-theme-light` boots the extracted kernel with `boot=live`, the
 `eclipseos.theme=light` one-shot selector and a QEMU std-VGA EDID mode of
-1920x1080. `make test-1920-dark` captures the default dark desktop at the same
-resolution. Both close the welcome terminal with a QMP Alt+F4 before the final
-screenshot so the taskbar and Start button are visible.
+1920x1080. `make test-1920-dark` also uses the extracted kernel and captures
+the dark desktop at the same resolution. Both pass
+`eclipseos.display=keep` so the VM display fitter does not shrink a fixed
+screenshot-evidence mode. Both close the welcome terminal with a QMP Alt+F4
+before the final screenshot so the taskbar and Start button are visible.
 
 These targets now pass and their captures have been inspected: the light
 image is genuinely light and the dark image is dark. They remain separate
@@ -154,6 +160,20 @@ The optional `--video-edid WxH` flag replaces QEMU's default VGA adapter with
 native mode. It is test-only and never changes the ISO. A 1920x1080 PNG is
 only accepted as 1920x1080 evidence if the QEMU result JSON and the PNG
 dimensions agree; do not upscale a smaller capture.
+
+`--expect-display WxH` verifies the final framebuffer after the guest has
+fitted its mode. `--check-panel` scans the final screenshot for the floating
+panel's top and bottom edges: both must be on-screen, the panel must be a
+plausible height, and it must be horizontally centred. The lowest strong edge
+with a small gap below it is treated as the panel bottom; the nearest strong
+edge above it is the panel top. This avoids confusing a maximised window's
+bottom border with the panel. A panel clipped by the bottom of the framebuffer
+has no bottom edge and fails the check.
+
+`make test-1366x768` models the laptop that exposed the bug. QEMU exposes a
+1366x768 EDID host mode; the guest session must fit it to 1280x720, and the
+final screenshot must be exactly 1280x720 with both panel edges visible.
+`--video-edid` and `--expect-display` may differ for this reason.
 
 QEMU tests use TCG when KVM is unavailable. They are slower but still valid;
 timing assertions must account for that.

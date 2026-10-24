@@ -11,8 +11,10 @@
 # Instead, the VM session selects the largest available mode that fits a
 # conservative 1280x720 target. 1280x720 fits a 1366x768 host with room for
 # window decorations and is a standard mode on most virtual adapters. If the
-# adapter does not advertise it, the script tries to add a CVT 1280x720 mode
-# and then falls back to the smallest useful mode that still fits 1360x768.
+# adapter does not advertise it exactly, the script tries a CVT 1280x720
+# modeline first, then the largest advertised mode inside the same target.
+# It never falls back to a mode taller than the target merely because the mode
+# exists: that is the bug this path fixes.
 #
 # Usage: eclipseos-display [fit|guard|panel|status]
 #
@@ -44,6 +46,22 @@ status_file() {
     printf '%s/eclipseos-display\n' "$(runtime_dir)"
 }
 
+guard_file() {
+    printf '%s/eclipseos-display-guard\n' "$(runtime_dir)"
+}
+
+write_guard_status() {
+    file="$(guard_file)"
+    install -d -m 0700 "$(dirname "$file")" 2>/dev/null || true
+    {
+        printf 'state=%s\n' "${guard_state:-unknown}"
+        printf 'screen=%s\n' "${screen:-unknown}"
+        printf 'panel=%s\n' "${panel_count:-unknown}"
+        printf 'updated=%s\n' "$(date -u '+%H:%M:%S')"
+    } >"$file"
+    chmod 0644 "$file" 2>/dev/null || true
+}
+
 kernel_value() {
     key="$1"
     # The kernel command line is whitespace-separated; word splitting is intended.
@@ -66,6 +84,7 @@ write_status() {
     install -d -m 0700 "$(dirname "$file")" 2>/dev/null || true
     {
         printf 'screen=%s\n' "${screen:-unknown}"
+        printf 'initial=%s\n' "${initial:-unknown}"
         printf 'mode=%s\n' "${mode:-unknown}"
         printf 'output=%s\n' "${output:-unknown}"
         printf 'target=%s\n' "${target:-$TARGET_DEFAULT}"
@@ -102,10 +121,19 @@ output_modes() {
     '
 }
 
-# Pick the largest landscape mode within the target. If none fits, try the
-# 1360x768 fallback class, which is the next size that can fit a 1366x768
-# laptop screen. The target itself always wins when it is advertised.
-choose_mode() {
+# Return the target only when the adapter advertises it exactly.
+choose_exact_mode() {
+    modes="$1"
+    target="$2"
+    printf '%s\n' "$modes" | awk -v target="$target" '
+        $1 == target { print $1; exit }
+    '
+}
+
+# Pick the largest landscape mode within the target. This is deliberately
+# separate from the modeline attempt: a smaller advertised mode such as
+# 800x600 must not prevent the standard 1280x720 CVT mode from being tried.
+choose_fitting_mode() {
     modes="$1"
     target="$2"
     target_width="${target%x*}"
@@ -118,25 +146,16 @@ choose_mode() {
             width = dimensions[1] + 0
             height = dimensions[2] + 0
             if (width < height) next
-
-            area = width * height
-            if (mode == tw "x" th) {
-                exact = mode
-                next
-            }
-            if (width <= tw && height <= th && area > fit_area) {
-                fit = mode
-                fit_area = area
-            }
-            if (width <= 1360 && height <= 768 && area > fallback_area) {
-                fallback = mode
-                fallback_area = area
+            if (width <= tw && height <= th) {
+                area = width * height
+                if (area > fit_area) {
+                    fit = mode
+                    fit_area = area
+                }
             }
         }
         END {
-            if (exact != "") print exact
-            else if (fit != "") print fit
-            else if (fallback != "") print fallback
+            if (fit != "") print fit
         }
     '
 }
@@ -194,6 +213,7 @@ do_fit() {
         keep)
             source=keep
             screen="$(screen_geometry || true)"
+            initial="$screen"
             write_status
             log "display fit disabled by eclipseos.display=keep"
             return 0
@@ -210,6 +230,7 @@ do_fit() {
     esac
 
     screen="$(screen_geometry || true)"
+    initial="$screen"
     output="$(connected_output || true)"
     if [ -z "$screen" ] || [ -z "$output" ]; then
         source=unavailable
@@ -219,24 +240,25 @@ do_fit() {
     fi
 
     modes="$(output_modes "$output")"
-    mode="$(choose_mode "$modes" "$target" || true)"
+    mode="$(choose_exact_mode "$modes" "$target" || true)"
     source=fit
 
+    # A smaller advertised mode is not good enough: try the standard CVT
+    # target before accepting one. This is what turns VMSVGA's 1280x800
+    # default into 1280x720 when the adapter omits 720p from its mode list.
     if [ -z "$mode" ]; then
         mode="$(try_target_modeline "$target" || true)"
         source=modeline
     fi
 
     if [ -z "$mode" ]; then
-        source=fallback
-        log "no mode fits $target; keeping the current $screen mode"
-        mode="$screen"
-        write_status
-        return 0
+        mode="$(choose_fitting_mode "$modes" "$target" || true)"
+        source=fit
     fi
 
-    if [ "$mode" = "$screen" ]; then
-        source=already-fits
+    if [ -z "$mode" ]; then
+        source=fallback
+        log "no mode fits $target; keeping the current $screen mode"
         write_status
         return 0
     fi
@@ -246,6 +268,12 @@ do_fit() {
         *x*) ;;
         *) mode_dimensions="$screen" ;;
     esac
+
+    if [ "$mode" = "$screen" ] || [ "$mode_dimensions" = "$screen" ]; then
+        source=already-fits
+        write_status
+        return 0
+    fi
 
     if ! apply_mode "$mode" "$mode_dimensions"; then
         source=apply-failed
@@ -273,8 +301,16 @@ reanchor_panel() {
     dbus_tool="$(qdbus_bin || true)"
     [ -n "$dbus_tool" ] || return 1
     script='var count = 0; for (var i = 0; i < panelIds.length; i++) { var p = panelById(panelIds[i]); if (!p) continue; p.location = "bottom"; p.alignment = "center"; p.offset = 0; count++; } print("eclipseos-panel-guard panels=" + count);'
-    "$dbus_tool" org.kde.plasmashell /PlasmaShell \
-        org.kde.PlasmaShell.evaluateScript "$script" >/dev/null 2>&1
+    output="$("$dbus_tool" org.kde.plasmashell /PlasmaShell \
+        org.kde.PlasmaShell.evaluateScript "$script" 2>/dev/null)" || return 1
+    if printf '%s\n' "$output" | grep -q 'panels=0'; then
+        panel_count=0
+        return 1
+    fi
+    panel_count="$(printf '%s\n' "$output" |
+        sed -n 's/.*panels=\([0-9][0-9]*\).*/\1/p' | tail -n 1)"
+    [ -n "$panel_count" ] || panel_count=unknown
+    return 0
 }
 
 do_panel() {
@@ -292,8 +328,12 @@ do_guard() {
     [ -n "${DISPLAY:-}" ] || return 0
     command -v "$XRANDR" >/dev/null 2>&1 || return 0
 
+    guard_state=starting
+    screen="$(screen_geometry || true)"
+    write_guard_status
+
     # Plasma starts its panel after this XDG autostart entry. Retry until the
-    # shell D-Bus service is available, then put the panel on the bottom edge.
+    # shell D-Bus service is available and at least one panel exists.
     attempt=0
     while [ "$attempt" -lt 30 ]; do
         if reanchor_panel; then
@@ -302,16 +342,62 @@ do_guard() {
         attempt=$((attempt + 1))
         sleep 2
     done
+    if [ "$attempt" -ge 30 ]; then
+        guard_state=failed
+        write_guard_status
+        log "Plasma panel D-Bus did not become ready"
+    fi
 
-    last="$(screen_geometry || true)"
+    target="$(kernel_value eclipseos.display || true)"
+    desired="$target"
+    case "$desired" in
+        "") desired="$TARGET_DEFAULT" ;;
+        keep) desired="" ;;
+    esac
+
+    # KScreen applies its own initial display profile after Plasma starts and
+    # can overwrite the mode selected by the session wrapper. Wait for that
+    # pass, reassert the fit, then check once more before declaring the guard
+    # ready. Without this, a VMSVGA host default can return after Plasma has
+    # already created its panel.
+    if [ -n "$desired" ]; then
+        sleep 5
+        do_fit
+        sleep 3
+        current="$(screen_geometry || true)"
+        if [ -n "$current" ] && [ "$current" != "$desired" ]; then
+            do_fit
+        fi
+    fi
+
+    if reanchor_panel; then
+        guard_state=ready
+    else
+        guard_state=failed
+    fi
+    screen="$(screen_geometry || true)"
+    write_guard_status
+
+    last="$screen"
+    started="$(date +%s)"
     while :; do
         sleep 3
         current="$(screen_geometry || true)"
         [ -n "$current" ] || continue
         if [ "$current" != "$last" ]; then
             log "resolution changed from $last to $current; re-anchoring panel"
+            # KScreen occasionally restores its preferred mode during the
+            # first minute. Reassert the requested fit in that window only;
+            # later manual resolution changes are left alone.
+            if [ -n "$desired" ] &&
+                [ $(( $(date +%s) - started )) -le 60 ]; then
+                do_fit
+            fi
             reanchor_panel || true
-            last="$current"
+            screen="$(screen_geometry || true)"
+            guard_state=ready
+            write_guard_status
+            last="$screen"
         fi
     done
 }

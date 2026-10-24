@@ -291,6 +291,25 @@ cannot safely hand itself over to `startplasma-x11` after a failure. In VMs,
 marker includes `vm_tuning=1` when that path ran. The
 earlier session wrapper therefore no longer claims to do that.
 
+Virtual-machine X11 sessions also enter through
+`/usr/local/bin/eclipseos-plasma-x11`. Before Plasma creates its panel,
+`eclipseos-display fit` selects the largest mode advertised by the virtual
+output that fits a conservative 1280x720 target. VirtualBox VMSVGA starts at
+1280x800 without Guest Additions; that guest mode is taller than a 1366x768
+host once the VM window decoration is included, so the bottom of the guest
+desktop and its panel are outside the visible window. The fitter tries a CVT
+1280x720 modeline when the adapter does not advertise that mode, then falls
+back to the adapter's own modes. `eclipseos.display=WxH` overrides the target
+and `eclipseos.display=keep` preserves a fixed EDID size for screenshot
+evidence. Physical machines and Wayland sessions are never changed.
+
+The display guard autostart runs after Plasma. It puts every panel back on the
+bottom edge (`location=bottom`, centred, zero offset) and watches `xrandr` for
+runtime resolution changes, re-anchoring the panel after each change. The
+panel layout also sets `offset=0` explicitly. The 1366x768 QEMU gate measures
+the produced framebuffer and the panel's top and bottom edges; it does not
+infer visibility from the guest's chosen resolution alone.
+
 ## 6. Installer design
 
 Calamares is configured, not forked. Branding lives in

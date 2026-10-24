@@ -1,6 +1,6 @@
 # VirtualBox support and known limitations
 
-Status: **Phase 1.** This document records what EclipseOS does and does not
+Status: **Phase 2 candidate.** This document records what EclipseOS does and does not
 provide in VirtualBox. It is deliberately explicit: the "pre-installed
 VirtualBox guest utilities" part of the original requirement is **not met**,
 and the ISO does not pretend otherwise.
@@ -12,7 +12,7 @@ and the ISO does not pretend otherwise.
 | Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
 | Graphics controller | VMSVGA | Selected by `scripts/create-vbox-vm.sh`; 128 MiB video RAM. |
 | Basic desktop rendering | Verified at 2048 MiB via X11/openbox | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
-| Automatic guest resolution / window resize | **Not available** | Requires Guest Additions. Set a mode manually with `xrandr` if the virtual monitor exposes one. |
+| Automatic guest resolution / window resize | **Partial, VM-safe default only** | Host-window resize still requires Guest Additions. The EclipseOS X11 session now picks the largest virtual mode inside 1280x720 before Plasma starts, because VMSVGA's 1280x800 default is taller than a 1366x768 host window. The user can still change mode with `xrandr`; Guest Additions are not bundled. |
 | Seamless mouse integration | **Not available** | The guest uses a relative pointer. Use VirtualBox's host key to release the pointer. |
 | Shared clipboard | **Not available** | No Guest Additions. Clipboard settings in the VM do nothing useful. |
 | Shared folders | **Not available** | No Guest Additions. |
@@ -93,8 +93,11 @@ seamless VirtualBox integration a user gets with Guest Additions.
 
 These are host-side or user-side options, not features of the ISO:
 
-- **Resolution:** after login, run `xrandr` to list modes and select one the
-  virtual monitor exposes. Do not expect arbitrary host-window resizing.
+- **Resolution:** the X11 session starts at the largest advertised mode that
+  fits 1280x720, normally 1280x720. Run `xrandr` to list modes or select
+  another mode. Do not expect arbitrary host-window resizing; that requires
+  Guest Additions. `eclipseos.display=keep` on the kernel command line keeps
+  the adapter default, and `eclipseos.display=WxH` requests another target.
 - **Pointer:** use the VirtualBox host key (usually Right Ctrl) to release the
   pointer from the guest.
 - **File transfer:** attach a second virtual disk, use a network service you
