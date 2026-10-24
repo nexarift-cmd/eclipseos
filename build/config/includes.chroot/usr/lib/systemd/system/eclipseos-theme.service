@@ -1,0 +1,13 @@
+[Unit]
+Description=EclipseOS live theme selection
+After=local-fs.target
+Before=sddm.service
+ConditionPathExists=/home/eclipse/.config/kdeglobals
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/eclipseos/eclipseos-theme-boot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

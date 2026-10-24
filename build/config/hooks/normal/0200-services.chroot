@@ -14,9 +14,12 @@ fail() {
 }
 
 SYSTEM_UNITS="
-lightdm.service
+sddm.service
 NetworkManager.service
 systemd-timesyncd.service
+eclipseos-session.service
+eclipseos-theme.service
+eclipseos-vm-tuning.service
 eclipseos-bootcheck.service
 "
 

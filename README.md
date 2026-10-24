@@ -29,15 +29,32 @@ update experience. The upstream components are credited in
 > built the strict `STRICT_FOSS=1` image with zero non-free firmware packages.
 > See [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md),
 > the [reproduction and fix evidence](docs/evidence/phase1/virtualbox-unattended.md),
-> and the [Phase 1 evidence index](docs/evidence/phase1/README.md). Phase 2
-> has started; the Plasma/SDDM migration is on a separate branch until it
-> boots and passes its gate.
+> and the [Phase 1 evidence index](docs/evidence/phase1/README.md).
+>
+> **Phase 2 is a candidate, not fully accepted.** GitHub Actions
+> [run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+> from commit `716378a` passed six QEMU boots: UEFI, BIOS and the
+> VirtualBox-storage-profile gate, plus genuine 1920x1080 light and dark
+> desktops and the branded SDDM greeter. The captured Start menu opens,
+> searches for Firefox and launches the browser with the offline EclipseOS
+> start page. The final ISO is
+> `eclipseos-26.10-amd64.iso`
+> (SHA256 `875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`).
+> The project owner booted the earlier `768a4f9` ISO in VirtualBox 7.2.20 at
+> 3000 MiB with EFI off (BIOS, VMSVGA); the desktop was reached, lag was
+> improved, Firefox showed the start page, the power menu was visible, the
+> live light-theme switch worked and no problems were reported. Phase 2 is
+> still open on a real-VirtualBox run of the final `716378a` ISO, VirtualBox
+> UEFI, 4096 MiB, actual Start-menu power-off, tray-control interaction,
+> greeter login and real-hardware Wayland. See
+> [`docs/evidence/phase2`](docs/evidence/phase2/README.md) for the exact
+> QEMU/VirtualBox matrix, screenshots and limits of the manual report.
 
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 0 | Decisions, risk register, repository skeleton | Complete |
 | 1 | Minimal hybrid live ISO with GRUB/Plymouth branding | **Complete and accepted at 2048 MiB**; final QEMU UEFI/BIOS + VirtualBox storage-profile pass; VirtualBox EFI/BIOS pass; 4096 MiB recommended but untested here |
-| 2 | Plasma desktop, taskbar, Start menu, themes | In progress on a separate branch until the first Plasma ISO boots |
+| 2 | Plasma desktop, taskbar, Start menu, themes | **Candidate:** QEMU UEFI/BIOS/VirtualBox-profile, 1920x1080 light/dark, SDDM, Start-menu search/launch and Firefox pass; VirtualBox 3000 MiB BIOS manual pass on `768a4f9`; final ISO VirtualBox, UEFI, power-off, tray, greeter login and real-hardware Wayland still open |
 | 3 | Calamares installer and bootable installed system | Not started |
 | 4 | Eclipse Settings, Files, Store, Updates | Not started |
 | 5 | Snap layouts, widgets, search, lock screen polish | Not started |
@@ -64,14 +81,18 @@ Calamares or Debian are our work.
 | Eclipse Files | Dolphin | Upstream file manager, rebranded and preconfigured |
 | Eclipse Store | Discover | Upstream package front-end, rebranded |
 | Terminal, editor, viewer, media player, calculator, screenshots | Konsole, Kate, Gwenview, Haruna, KCalc, Spectacle | Upstream applications, themed |
-| Browser | Firefox ESR | Upstream, preconfigured |
+| Browser | Firefox ESR | Unmodified Debian build; EclipseOS offline start page, bookmarks and unprivileged preferences |
 | Networking, audio, Bluetooth, printing, power | NetworkManager, PipeWire, BlueZ, CUPS, power-profiles-daemon | Reused upstream |
 | Branding | EclipseOS | Original SVG logo, wallpapers, icons and themes; no Microsoft assets |
 
-The Phase 1 live image is intentionally smaller than the target product:
-LightDM + openbox + xterm/feh prove the boot and graphical path. Phase 2
-replaces that session with Plasma and SDDM. The table above describes the
-target product, not the Phase 1 contents.
+The Phase 2 candidate now uses SDDM and Plasma 6.3. Physical machines default to
+Plasma Wayland; virtual machines detected by `systemd-detect-virt` use Plasma
+X11 because VMSVGA-style virtual display adapters have produced black Wayland
+screens. Firefox ESR is the Debian main build; its EclipseOS start page is
+local and makes no network requests until the user chooses a search or link.
+The branded SDDM greeter is derived from the Debian Breeze theme. The table
+above describes the target product; Phase 2 visual polish, the installer and
+the remaining applications are not complete yet.
 
 ## Architecture and planning
 
@@ -214,6 +235,13 @@ virtualiser; the accepted EFI/BIOS result at 2048 MiB is recorded in the
 evidence directory, and 4096 MiB is recommended but untested here. Read
 [`docs/virtualbox-limitations.md`](docs/virtualbox-limitations.md) before
 expecting clipboard, shared folders or automatic display resizing.
+
+[Run 39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+is the final Phase 2 QEMU evidence set. It passed the three default boot gates
+plus the 1920x1080 light, dark and SDDM greeter captures. The ISO SHA-256 is
+`875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea`.
+The final ISO has not yet been re-run in real VirtualBox; the manual BIOS
+report covers the earlier `768a4f9` ISO.
 
 ## Security and privacy
 

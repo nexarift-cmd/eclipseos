@@ -16,10 +16,18 @@ MEMORY=4096
 CPUS=2
 MACHINE="q35"
 VGA="std"
+VIDEO_EDID=""
+EXPECT_DISPLAY=""
+CHECK_PANEL=0
 OPTICAL="auto"
+EXPECT_SESSION="x11"
 DIRECT_KERNEL=0
+DIRECT_LIVE=0
 KERNEL=""
 INITRD=""
+KERNEL_APPEND_EXTRA=""
+CLOSE_WELCOME=0
+START_MENU=0
 KERNEL_APPEND="console=tty0 console=ttyS0,115200n8 quiet"
 OUTDIR=""
 BOOT_TMP=""
@@ -47,10 +55,28 @@ Options:
   --cpus N              Guest vCPUs (default: 2)
   --machine q35|pc      QEMU machine (default: q35; pc for VirtualBox-like IDE)
   --vga std|vmware      VGA adapter (default: std; vmware is VMSVGA-like)
+  --video-edid WxH      Expose a synthetic EDID mode (for example 1920x1080;
+                        requires --vga std; test-only display evidence)
+  --expect-display WxH  Require the final framebuffer size. Use when the guest
+                        fits a smaller mode than the EDID host size.
+  --check-panel         Require the whole bottom panel to be visible in the
+                        final screenshot (top and bottom edges on-screen)
   --optical auto|ide    Optical attachment (default: auto; ide uses pc secondary master)
+  --expect-session x11|wayland|greeter
+                        Session required in the boot marker (default: x11,
+                        because every QEMU target is a virtual machine)
   --direct-kernel-no-live
                         Boot the ISO kernel/initrd directly, omitting boot=live.
                         Requires xorriso to extract the kernel and initrd.
+  --direct-kernel-live  Boot the extracted kernel/initrd with the live boot
+                        arguments. Used for the light-theme evidence boot.
+  --kernel-append-extra TEXT
+                        Append TEXT to the direct-kernel command line.
+  --close-welcome       Send Alt+F4 after the boot marker so the final
+                        screenshot shows the desktop rather than the welcome
+                        terminal.
+  --start-menu          Open Kickoff, search for Firefox, launch it and save
+                        Start menu/search/launch screenshots.
   --outdir PATH         Output directory (default: tests/out/<timestamp>-<firmware>-...)
   -h, --help            Show this help
 EOF
@@ -65,8 +91,16 @@ while [[ $# -gt 0 ]]; do
         --cpus) CPUS="${2:?--cpus requires a number}"; shift 2 ;;
         --machine) MACHINE="${2:?--machine requires q35 or pc}"; shift 2 ;;
         --vga) VGA="${2:?--vga requires std or vmware}"; shift 2 ;;
+        --video-edid) VIDEO_EDID="${2:?--video-edid requires WxH}"; shift 2 ;;
+        --expect-display) EXPECT_DISPLAY="${2:?--expect-display requires WxH}"; shift 2 ;;
+        --check-panel) CHECK_PANEL=1; shift ;;
         --optical) OPTICAL="${2:?--optical requires auto or ide}"; shift 2 ;;
-        --direct-kernel-no-live) DIRECT_KERNEL=1; shift ;;
+        --expect-session) EXPECT_SESSION="${2:?--expect-session requires x11 or wayland}"; shift 2 ;;
+        --direct-kernel-no-live) DIRECT_KERNEL=1; DIRECT_LIVE=0; shift ;;
+        --direct-kernel-live) DIRECT_KERNEL=1; DIRECT_LIVE=1; shift ;;
+        --kernel-append-extra) KERNEL_APPEND_EXTRA="${2:?--kernel-append-extra requires text}"; shift 2 ;;
+        --close-welcome) CLOSE_WELCOME=1; shift ;;
+        --start-menu) START_MENU=1; shift ;;
         --outdir) OUTDIR="${2:?--outdir requires a path}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
         *) printf 'Unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
@@ -89,8 +123,27 @@ case "$OPTICAL" in
     auto|ide) ;;
     *) printf 'error: --optical must be auto or ide\n' >&2; exit 2 ;;
 esac
+case "$EXPECT_SESSION" in
+    x11|wayland|greeter) ;;
+    *) printf 'error: --expect-session must be x11, wayland or greeter\n' >&2; exit 2 ;;
+esac
 if [[ "$OPTICAL" == "ide" && "$MACHINE" != "pc" ]]; then
     printf 'error: --optical ide requires --machine pc\n' >&2
+    exit 2
+fi
+if [[ -n "$VIDEO_EDID" ]]; then
+    if [[ ! "$VIDEO_EDID" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]]; then
+        printf 'error: --video-edid must look like 1920x1080\n' >&2
+        exit 2
+    fi
+    if [[ "$VGA" != "std" ]]; then
+        printf 'error: --video-edid requires --vga std\n' >&2
+        exit 2
+    fi
+fi
+if [[ -n "$EXPECT_DISPLAY" ]] &&
+    [[ ! "$EXPECT_DISPLAY" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]]; then
+    printf 'error: --expect-display must look like 1280x720\n' >&2
     exit 2
 fi
 
@@ -165,14 +218,35 @@ if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
         printf 'error: extracted kernel or initrd is missing.\n' >&2
         exit 1
     fi
+    if [[ "$DIRECT_LIVE" -eq 1 ]]; then
+        KERNEL_APPEND="boot=live quiet splash plymouth.ignore-serial-consoles console=tty0 console=ttyS0,115200n8"
+    else
+        KERNEL_APPEND="console=tty0 console=ttyS0,115200n8 quiet"
+    fi
+    if [[ -n "$KERNEL_APPEND_EXTRA" ]]; then
+        KERNEL_APPEND="$KERNEL_APPEND $KERNEL_APPEND_EXTRA"
+    fi
     printf 'Direct-kernel mode: %s + %s\n' "$(basename -- "$KERNEL")" "$(basename -- "$INITRD")"
-    printf 'Kernel command line (no boot=live): %s\n' "$KERNEL_APPEND"
+    printf 'Kernel command line: %s\n' "$KERNEL_APPEND"
 fi
 
 if [[ -z "$OUTDIR" ]]; then
     MODE_SUFFIX=""
     if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
-        MODE_SUFFIX="-direct"
+        if [[ "$DIRECT_LIVE" -eq 1 ]]; then
+            MODE_SUFFIX="-direct-live"
+        else
+            MODE_SUFFIX="-direct"
+        fi
+    fi
+    if [[ -n "$VIDEO_EDID" ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-edid-${VIDEO_EDID}"
+    fi
+    if [[ -n "$EXPECT_DISPLAY" ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-expect-${EXPECT_DISPLAY}"
+    fi
+    if [[ "$CHECK_PANEL" -eq 1 ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-panel"
     fi
     OUTDIR="$ROOT_DIR/tests/out/$(date -u '+%Y%m%dT%H%M%SZ')-${FIRMWARE}-${MACHINE}-${OPTICAL}-${VGA}${MODE_SUFFIX}"
 fi
@@ -187,8 +261,24 @@ python_args=(
     --machine "$MACHINE"
     --vga "$VGA"
     --optical "$OPTICAL"
+    --expect-session "$EXPECT_SESSION"
     --outdir "$OUTDIR"
 )
+if [[ -n "$VIDEO_EDID" ]]; then
+    python_args+=(--video-edid "$VIDEO_EDID")
+fi
+if [[ -n "$EXPECT_DISPLAY" ]]; then
+    python_args+=(--expect-display "$EXPECT_DISPLAY")
+fi
+if [[ "$CHECK_PANEL" -eq 1 ]]; then
+    python_args+=(--check-panel)
+fi
+if [[ "$CLOSE_WELCOME" -eq 1 ]]; then
+    python_args+=(--close-welcome)
+fi
+if [[ "$START_MENU" -eq 1 ]]; then
+    python_args+=(--start-menu)
+fi
 if [[ "$DIRECT_KERNEL" -eq 1 ]]; then
     python_args+=(
         --direct-kernel

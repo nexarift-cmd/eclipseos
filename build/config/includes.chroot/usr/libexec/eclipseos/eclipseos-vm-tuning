@@ -1,0 +1,72 @@
+#!/bin/sh
+#
+# Reduce Plasma compositor work on virtual machines.
+#
+# VirtualBox and QEMU commonly have no usable GPU acceleration, so blur,
+# contrast, translucency and window animations cost CPU without adding much
+# visual value. This is deliberately a small, reversible tuning pass: it only
+# changes KWin animation/effect keys for the live user's profile. Physical
+# machines are left untouched.
+set -eu
+
+if ! systemd-detect-virt --vm --quiet 2>/dev/null; then
+    exit 0
+fi
+
+# The live user is the only account this preview configures. An installed
+# system's real account, when Phase 3 adds it, must not get a bogus root-owned
+# /home/eclipse directory from this service.
+if [ ! -d /home/eclipse ]; then
+    exit 0
+fi
+
+config=/home/eclipse/.config/kwinrc
+install -d -m 0755 /home/eclipse/.config
+chown eclipse:eclipse /home/eclipse/.config
+touch "$config"
+chown eclipse:eclipse "$config"
+
+write_key() {
+    group="$1"
+    key="$2"
+    value="$3"
+    if command -v kwriteconfig6 >/dev/null 2>&1; then
+        kwriteconfig6 --file "$config" --group "$group" --key "$key" "$value"
+    else
+        # Best effort fallback for an incomplete early-boot environment. The
+        # KConfig file is not critical to booting and can be repaired later.
+        sed -i "/^\[$group\]$/,/^\[/ s/^$key=.*/$key=$value/" "$config" 2>/dev/null || true
+    fi
+}
+
+# Keep compositing enabled: the panel needs it for translucency and the
+# screenshot evidence should still represent the real desktop. Remove the
+# expensive effects and make the remaining transitions immediate.
+write_key Compositing AnimationSpeed 0
+write_key Compositing LatencyPolicy Low
+
+for effect in \
+    blurEnabled \
+    contrastEnabled \
+    translucencyEnabled \
+    kwin4_effect_translucencyEnabled \
+    fadeEnabled \
+    kwin4_effect_fadeEnabled \
+    scaleEnabled \
+    kwin4_effect_scaleEnabled \
+    squashEnabled \
+    kwin4_effect_squashEnabled \
+    magiclampEnabled \
+    kwin4_effect_magiclampEnabled \
+    slidingpopupsEnabled \
+    slideEnabled \
+    dialogparentEnabled \
+    diminactiveEnabled; do
+    write_key Plugins "$effect" false
+done
+
+chown eclipse:eclipse "$config"
+printf 'virtual-machine\n' > /run/eclipseos-vm-tuning
+chmod 0644 /run/eclipseos-vm-tuning
+printf 'EclipseOS VM tuning applied: compositor effects disabled\n' \
+    | logger -t eclipseos-vm-tuning 2>/dev/null || true

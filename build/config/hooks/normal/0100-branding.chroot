@@ -57,8 +57,9 @@ for group in sudo audio video render plugdev netdev cdrom; do
     fi
 done
 
-# No password by design. lightdm uses its autologin PAM service; the empty
-# password only documents that the account cannot be logged into with one.
+# No password by design. SDDM autologin uses its autologin PAM service; the
+# empty password only documents that the account cannot be logged into with
+# one. The installed system must set a real password in the Phase 3 installer.
 passwd -d eclipse >/dev/null
 
 # The drop-in must not be writable by the live user.
@@ -73,13 +74,20 @@ visudo -c >/dev/null || fail '/etc/sudoers is invalid after the live drop-in'
 # a non-executable session or boot-check would otherwise produce a broken
 # image that still boots.
 for script in \
-    /usr/local/bin/eclipseos-session \
+    /usr/local/bin/eclipseos-plasma-session \
+    /usr/local/bin/eclipseos-theme \
     /usr/local/bin/eclipseos-welcome \
-    /usr/libexec/eclipseos/eclipseos-bootcheck \
-    /etc/xdg/openbox/autostart; do
+    /usr/libexec/eclipseos/eclipseos-session-select \
+    /usr/libexec/eclipseos/eclipseos-theme-boot \
+    /usr/libexec/eclipseos/eclipseos-vm-tuning \
+    /usr/libexec/eclipseos/eclipseos-bootcheck; do
     [ -f "$script" ] || fail "missing session executable: $script"
     chmod 0755 "$script"
 done
+
+command -v sddm >/dev/null 2>&1 || fail 'sddm is not installed'
+command -v startplasma-wayland >/dev/null 2>&1 || fail 'startplasma-wayland is not installed'
+command -v startplasma-x11 >/dev/null 2>&1 || fail 'startplasma-x11 is not installed'
 
 # ---------------------------------------------------------------------------
 # Console branding

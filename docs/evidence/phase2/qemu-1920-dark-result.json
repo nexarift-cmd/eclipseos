@@ -1,0 +1,38 @@
+{
+  "timestamp_utc": "2026-10-23T06:04:32+00:00",
+  "firmware": "uefi",
+  "machine": "q35",
+  "vga": "std",
+  "video_edid": "1920x1080",
+  "optical": "auto",
+  "boot_mode": "iso",
+  "close_welcome": true,
+  "kernel": null,
+  "initrd": null,
+  "kernel_append": null,
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "875de1db5bf988169b8e0c804b059cbeeaeffe6ae485598049ba47f0fb0124ea",
+  "duration_seconds": 65.5,
+  "marker": "\u001b[!p\u001b]104\u0007\u001b[?7h\u001b[6n\u001b[32766;32766H\u001b[6n\u001b[!p\u001b]104\u0007\u001b[?7h\u001b[6n\u001b[32766;32766H\u001b[6nECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261023T060326Z-uefi-q35-auto-std-edid-1920x1080/screenshot.png",
+  "screenshot_info": {
+    "width": 1920,
+    "height": 1080,
+    "sampled_pixels": 103680,
+    "non_black_ratio": 0.461362,
+    "unique_colours": 1368,
+    "meaningful": true
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261023T060326Z-uefi-q35-auto-std-edid-1920x1080/boot-01-0008s.png"
+  ],
+  "startmenu_screenshots": [
+    "/work/tests/out/20261023T060326Z-uefi-q35-auto-std-edid-1920x1080/startmenu.png",
+    "/work/tests/out/20261023T060326Z-uefi-q35-auto-std-edid-1920x1080/startmenu-search.png",
+    "/work/tests/out/20261023T060326Z-uefi-q35-auto-std-edid-1920x1080/firefox-launched.png"
+  ],
+  "result": "pass",
+  "failure_reason": ""
+}

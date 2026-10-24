@@ -15,9 +15,14 @@ is fixed by branding `/.disk/info` (no VISO detection) plus a `BOOT=live`
 initramfs default. 4096 MiB is recommended but remains untested because this
 5.1 GB host cannot start the guest. The strict main-only ISO from run #4
 contains zero non-free firmware packages; it was not rebuilt after the
-Phase 1 fix. Phase 2 has started on a separate branch until its first Plasma
-ISO passes a boot gate. Evidence:
-[`evidence/phase1`](evidence/phase1/README.md) and
+Phase 1 fix. Phase 2 is a verified candidate: final QEMU run `39908248658`
+passed the three default boots plus 1920x1080 light, dark and SDDM captures,
+and a manual VirtualBox BIOS boot at 3000 MiB on the earlier `768a4f9` ISO
+reached the desktop. The final ISO was not re-run in VirtualBox; VirtualBox
+UEFI, power-off/tray actions, greeter login and real-hardware Wayland remain
+open. Evidence:
+[`evidence/phase1`](evidence/phase1/README.md),
+[`evidence/phase2`](evidence/phase2/README.md), and
 [`evidence/phase1/virtualbox-unattended.md`](evidence/phase1/virtualbox-unattended.md).
 
 ## Phase 0 — Plan and repository skeleton
@@ -93,18 +98,52 @@ Scope:
 - centered taskbar with pinned/running apps and tray;
 - Start menu with search and power menu;
 - light/dark toggle and wallpaper picker;
-- desktop icons and context menu;
-- live autologin.
+- branded SDDM greeter and live autologin;
+- Firefox ESR with an EclipseOS start page and bookmarks;
+- desktop icons and context menu.
 
 Acceptance:
 
 - live ISO boots directly to the EclipseOS desktop in VirtualBox UEFI and
   BIOS;
+- the branded SDDM greeter is visible without autologin and accepts a live
+  login;
 - screenshots in light and dark mode at 1920x1080;
 - Start menu opens, searches, launches an app and powers off;
-- taskbar running indicators and tray controls function;
+- taskbar pinned launchers, running indicators and tray controls function;
+- Firefox ESR starts and shows the offline EclipseOS start page;
 - no Microsoft assets; licence inventory updated;
 - QEMU smoke test still passes.
+
+### Status at the current Phase 2 candidate
+
+- Final QEMU run
+  [39908248658](https://github.com/nexarift-cmd/eclipseos/actions/runs/39908248658)
+  from commit `716378a` passed UEFI, BIOS, the VirtualBox-storage-profile
+  boot and 1920x1080 light, dark and SDDM greeter captures. Every desktop
+  marker reported `session=x11`, `virt=kvm`, `selection=eclipseos-x11`,
+  `vm_tuning=1` and `failed_units=0`.
+- The light and dark captures are genuine 1920x1080 framebuffer images. The
+  greeter shows the EclipseOS live user and `Desktop Session: EclipseOS (X11)`.
+  Kickoff opens, searches for Firefox and launches it with the offline
+  EclipseOS start page.
+- A real VirtualBox 7.2.20 boot at 3000 MiB with **EFI off** (BIOS, VMSVGA)
+  reached the Plasma desktop on the earlier `768a4f9` ISO. The owner reported
+  improved lag, a working Firefox start page, a visible power menu, a working
+  runtime light switch and no problems. The final `716378a` ISO has not been
+  re-run in VirtualBox.
+- VirtualBox UEFI, 4096 MiB, the actual Start-menu power-off action,
+  tray-control clicks, a successful greeter login and real-hardware Wayland
+  remain unverified. A visible power menu is not proof that power-off was
+  pressed.
+- The Firefox ESR browser is included with an EclipseOS local start page,
+  bookmarks and unprivileged preferences. It remains the unmodified Debian
+  Mozilla build.
+- Pinned taskbar launchers and running indicators are visible in the final
+  screenshots. The earlier one-string launcher bug is fixed.
+
+The exact evidence and limitations are in
+[`evidence/phase2/README.md`](evidence/phase2/README.md).
 
 ## Phase 3 — Installer and installed system
 

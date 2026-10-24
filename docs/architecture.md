@@ -1,14 +1,19 @@
 # EclipseOS architecture
 
-Status: **Phase 1 default image built and boot-tested.** This document
-describes the target product and its Phase 1 subset. Phase 1 uses LightDM +
-openbox + xterm/feh instead of Plasma + SDDM; Phase 2 replaces the session.
-The default ISO booted in QEMU UEFI/BIOS and in VirtualBox EFI/BIOS at
-2048 MiB; a strict main-only image also passed both QEMU boots with zero
-non-free firmware packages. The 4096 MiB VirtualBox target is still open.
-This document is design and policy, not boot evidence; see
-[`evidence/phase1`](evidence/phase1/README.md) and
-[build-environment.md](build-environment.md).
+Status: **Phase 1 is accepted; Phase 2 is a verified candidate, not fully
+accepted.** This document describes the target product and the current
+subset. Phase 1 used LightDM + openbox + xterm/feh; the Phase 2 candidate
+replaces that session with SDDM + Plasma and adds the branded shell, Firefox
+ESR, light/dark switching, VM tuning and a custom greeter. Final Phase 2 QEMU
+run 39908248658 passed UEFI, BIOS, the VirtualBox storage profile and
+1920x1080 light, dark and greeter captures. A real VirtualBox BIOS boot at
+3000 MiB reached the desktop on the earlier `768a4f9` ISO, but the final
+`716378a` ISO was not re-run in VirtualBox; VirtualBox UEFI, 4096 MiB, the
+start-menu power-off action, tray interaction, greeter login and
+real-hardware Wayland remain open. See
+[`evidence/phase2`](evidence/phase2/README.md). This document is design and
+policy, not boot evidence; see [`evidence/phase1`](evidence/phase1/README.md)
+and [build-environment.md](build-environment.md).
 
 ## 1. Scope and honest boundaries
 
@@ -49,7 +54,7 @@ and desktop component from scratch is not.
 | Settings | Custom Qt 6 / QML application | Meets the custom-app requirement and integrates with the same Qt stack as Plasma. C++/Qt avoids an extra Python GUI runtime and produces a small, packageable binary. |
 | Update UI | Custom Qt 6 / QML front-end, APT/PolicyKit backend, Discover for app management | Friendly update flow while preserving Debian's signed APT trust chain. |
 | File manager / store / apps | Dolphin, Discover, Konsole, Kate, Gwenview, Haruna, KCalc, Spectacle, Firefox ESR | Reused and re-themed where the application does not need a custom implementation. Replacing them would add risk without improving the core OS. |
-| Display server default | Wayland, with an X11 fallback session | Wayland is the modern default; X11 remains selectable for troublesome GPUs and VirtualBox configurations. |
+| Display server default | Wayland on physical machines; automatic Plasma X11 in virtual machines, with an X11 session always selectable | Wayland is the modern default on hardware. `eclipseos-session.service` uses `systemd-detect-virt --vm` before SDDM starts and selects X11 for VMs, where virtual display adapters have produced black Wayland screens. X11 also remains selectable for older GPUs. |
 | Versioning | `eclipse-YY.MM`; first release `eclipse-26.10` | Unambiguous release cadence and image naming. |
 | Project licence | GPL-3.0-or-later for EclipseOS code | Compatible with the KDE ecosystem and keeps the product layer free software. |
 
@@ -97,9 +102,12 @@ check. They will be pinned to a Debian snapshot before the release build.
    ISO or USB device.
 4. Plymouth displays the original EclipseOS boot splash while the root
    overlay is assembled.
-5. systemd reaches the graphical target. Phase 1 starts LightDM, which logs
-   the live user in automatically and launches the EclipseOS X11/openbox
-   session. Phase 2 replaces this with SDDM and Plasma.
+5. systemd reaches the graphical target. `eclipseos-session.service` selects
+   Wayland on physical hardware or X11 when `systemd-detect-virt` reports a
+   VM, `eclipseos-theme.service` selects the saved light/dark scheme, and
+   `eclipseos-vm-tuning.service` applies the VM-only compositor profile. SDDM
+   then autologins the live user into that Plasma session. The static SDDM
+   fallback is X11.
 6. The live session runs as `eclipse` (no password) so the desktop is
    immediately usable. No installed-system credential exists yet.
 7. Phase 3 adds an "Install EclipseOS" launcher that starts Calamares through
@@ -158,7 +166,47 @@ pinned package snapshot".
 
 ## 5. Desktop shell design
 
-### Approach
+### Current Phase 2 candidate
+
+The current live image uses SDDM autologin into Plasma 6.3, a floating
+bottom panel built from stock Plasma applets, and the EclipseOS look-and-feel.
+The pinned taskbar entries are Firefox ESR, Dolphin, Konsole, Kate and System
+Settings; `firefox-esr.desktop` is a Plasma string-list entry, not a single
+comma-joined string. The Start menu uses the same applications plus
+Info Centre. Firefox opens the local
+`/usr/share/eclipseos/browser/home.html` page and loads EclipseOS bookmarks and
+system preferences from `/etc/firefox-esr/firefox-esr.js` plus
+`/usr/share/firefox-esr/distribution/policies.json`. These are defaults for a
+new profile, not a locked browser.
+
+`eclipseos-theme` switches the `EclipseOS` and `EclipseOSLight` colour schemes
+and the matching dark or light look-and-feel and wallpaper at runtime. The
+choice is stored in `~/.config/eclipseos/theme`; `eclipseos.theme=light|dark`
+remains a one-shot boot override for tests. `eclipseos-theme-boot` selects the
+theme before SDDM, writes the authoritative value to `/run/eclipseos-theme`,
+and inserts or updates `ColorScheme`, `LookAndFeelPackage` and the Plasma
+theme key in the live user's config. The login autostart command calls
+`eclipseos-theme apply`; `apply` reads `/run/eclipseos-theme` rather than
+guessing from a config file Plasma may already have rewritten, applies the
+global look-and-feel, colour scheme, desktop theme and wallpaper, and records
+the result under `~/.cache/eclipseos-theme/`. `eclipseos-bootcheck` waits for
+that status on a light boot and checks the applied look-and-feel before
+declaring the desktop ready. The light theme is a separate
+`org.eclipseos.light.desktop` package; both EclipseOS global themes keep the
+colour-aware `default` Plasma style.
+
+The greeter is a thin branding derivative of the Debian Breeze SDDM theme:
+the upstream QML is reused unchanged, while `theme.conf` points at the
+EclipseOS mark and wallpaper. `eclipseos-session-select` writes the absolute
+`/usr/share/xsessions/eclipseos-x11.desktop` path into SDDM's last-session
+state so the greeter preselects **EclipseOS (X11)** in a VM; a bare session
+filename does not match SDDM's `SessionModel`. `eclipseos-vm-tuning.service`
+runs only when `systemd-detect-virt --vm` is true and disables KWin blur,
+contrast, translucency, window animations and related effects for the live
+user. It does not disable the compositor. Physical machines keep the full
+effects.
+
+### Target approach
 
 Use KDE Plasma as the session/compositor and build the visible EclipseOS shell
 from focused customisations:
@@ -218,18 +266,49 @@ from focused customisations:
 
 ### Lock and login
 
-- SDDM theme: original eclipse corona artwork, blurred wallpaper, user card,
-  password field, session picker, accessibility and power actions.
+- SDDM theme: the current `eclipseos` greeter is a Breeze-derived QML theme
+  with the EclipseOS mark and wallpaper; the target is original eclipse
+  corona artwork, a user card, password field, session picker, accessibility
+  and power actions.
 - Plasma lock screen: same wallpaper language, clear unlock affordance and
   media controls; no fake Windows lock screen.
 - The installed system never auto-logs in. The live session does, by design.
 
 ### Display server policy
 
-The default session is Plasma Wayland. An "EclipseOS on X11" session is
-installed and documented for VirtualBox and older GPUs. A boot-time fallback
-service may select X11 when the Wayland session fails repeatedly, but it must
-not hide persistent crashes from the test suite.
+The default session is Plasma Wayland on physical machines. The
+`eclipseos-session.service` oneshot runs before SDDM and calls
+`systemd-detect-virt --vm`. If it reports a virtual machine, the service writes
+a late SDDM drop-in selecting `eclipseos-x11`; otherwise it selects
+`eclipseos-wayland`. The static SDDM configuration keeps X11 as a safe
+fallback if the selector ever fails. An "EclipseOS on X11" session remains in
+the SDDM session menu for older GPUs and manual diagnosis.
+
+This selection is based on the hypervisor, not on a Wayland crash loop. SDDM
+starts the X server before launching an X11 session, so a Wayland session
+cannot safely hand itself over to `startplasma-x11` after a failure. In VMs,
+`eclipseos-vm-tuning` additionally reduces compositor effects; the QEMU boot
+marker includes `vm_tuning=1` when that path ran. The
+earlier session wrapper therefore no longer claims to do that.
+
+Virtual-machine X11 sessions also enter through
+`/usr/local/bin/eclipseos-plasma-x11`. Before Plasma creates its panel,
+`eclipseos-display fit` selects the largest mode advertised by the virtual
+output that fits a conservative 1280x720 target. VirtualBox VMSVGA starts at
+1280x800 without Guest Additions; that guest mode is taller than a 1366x768
+host once the VM window decoration is included, so the bottom of the guest
+desktop and its panel are outside the visible window. The fitter tries a CVT
+1280x720 modeline when the adapter does not advertise that mode, then falls
+back to the adapter's own modes. `eclipseos.display=WxH` overrides the target
+and `eclipseos.display=keep` preserves a fixed EDID size for screenshot
+evidence. Physical machines and Wayland sessions are never changed.
+
+The display guard autostart runs after Plasma. It puts every panel back on the
+bottom edge (`location=bottom`, centred, zero offset) and watches `xrandr` for
+runtime resolution changes, re-anchoring the panel after each change. The
+panel layout also sets `offset=0` explicitly. The 1366x768 QEMU gate measures
+the produced framebuffer and the panel's top and bottom edges; it does not
+infer visibility from the guest's chosen resolution alone.
 
 ## 6. Installer design
 

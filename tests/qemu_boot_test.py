@@ -79,6 +79,16 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def parse_edid(value: str) -> tuple[int, int]:
+    match = re.fullmatch(r"(\d{3,4})x(\d{3,4})", value)
+    if not match:
+        die("--video-edid must look like 1920x1080")
+    width, height = (int(group) for group in match.groups())
+    if not 640 <= width <= 4096 or not 480 <= height <= 4096:
+        die("--video-edid dimensions are outside the supported range")
+    return width, height
+
+
 class Qmp:
     """Tiny QMP client for commands used by this test."""
 
@@ -200,6 +210,93 @@ def capture_screenshot(
         ppm_path.unlink(missing_ok=True)
 
 
+def inspect_panel(pixels: bytes, width: int, height: int) -> dict:
+    """Locate the floating bottom panel from its horizontal edges.
+
+    A panel is a wide, short rectangle near the bottom edge. Its top and
+    bottom edges are strong full-row colour transitions; the wallpaper gap
+    below the floating panel is not. Looking for the lowest strong edge and
+    the nearest edge above it avoids mistaking a maximised window's bottom
+    edge for the panel. The check fails when the panel is clipped: a cropped
+    panel has no bottom edge near the screen bottom.
+    """
+    scan_start = max(0, height - 160)
+    strong_threshold = max(32, width // 5)
+    candidates: list[dict[str, int]] = []
+
+    for y in range(scan_start, height - 1):
+        row = y * width * 3
+        next_row = (y + 1) * width * 3
+        count = 0
+        min_x = width
+        max_x = -1
+        for x in range(width):
+            offset = x * 3
+            first = row + offset
+            second = next_row + offset
+            delta = (
+                abs(pixels[first] - pixels[second])
+                + abs(pixels[first + 1] - pixels[second + 1])
+                + abs(pixels[first + 2] - pixels[second + 2])
+            )
+            if delta > 8:
+                count += 1
+                min_x = min(min_x, x)
+                max_x = max(max_x, x)
+        if count >= strong_threshold:
+            candidates.append({"y": y, "count": count, "min_x": min_x, "max_x": max_x})
+
+    if not candidates:
+        return {"visible": False, "reason": "no panel edge found"}
+
+    bottom = max(candidates, key=lambda edge: edge["y"])
+    gap = height - 1 - bottom["y"]
+    if not 0 <= gap <= 20:
+        return {
+            "visible": False,
+            "reason": f"lowest panel edge is {gap}px above the screen bottom",
+        }
+
+    # The nearest strong edge at least one panel-height above the bottom edge
+    # is the top of the panel. A window edge further up is not considered.
+    upper = [
+        edge
+        for edge in candidates
+        if 30 <= bottom["y"] - edge["y"] <= 120
+    ]
+    if not upper:
+        return {
+            "visible": False,
+            "reason": "panel top edge is missing or outside the screen",
+            "bottom": bottom["y"],
+            "gap": gap,
+        }
+    top = max(upper, key=lambda edge: edge["y"])
+    panel_height = bottom["y"] - top["y"] + 1
+    span = top["max_x"] - top["min_x"] + 1
+    center = (top["min_x"] + top["max_x"]) / 2
+    center_offset = abs(center - (width - 1) / 2)
+    info = {
+        "visible": True,
+        "top": top["y"],
+        "bottom": bottom["y"],
+        "height": panel_height,
+        "gap": gap,
+        "span": span,
+        "center_offset": round(center_offset, 1),
+    }
+    if not 20 <= panel_height <= 120:
+        info.update(visible=False, reason=f"unexpected panel height {panel_height}px")
+    elif span < max(120, int(width * 0.15)):
+        info.update(visible=False, reason=f"panel edge is only {span}px wide")
+    elif center_offset > max(10, width * 0.03):
+        info.update(
+            visible=False,
+            reason=f"panel is {center_offset:.0f}px off the horizontal centre",
+        )
+    return info
+
+
 def inspect_ppm(ppm_path: Path) -> dict:
     """Report whether the framebuffer contains meaningful content."""
     data = ppm_path.read_bytes()
@@ -234,6 +331,7 @@ def inspect_ppm(ppm_path: Path) -> dict:
         "non_black_ratio": round(non_black_ratio, 6),
         "unique_colours": len(colours),
         "meaningful": non_black_ratio >= 0.002 and len(colours) >= 4,
+        "panel": inspect_panel(pixels, width, height),
     }
 
 
@@ -285,8 +383,18 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     else:
         command += ["-boot", "order=d,menu=off"]
 
+    if args.video_edid:
+        if args.vga != "std":
+            die("--video-edid requires --vga std")
+        edid_width, edid_height = parse_edid(args.video_edid)
+        command += [
+            "-vga", "none",
+            "-device",
+            f"VGA,edid=on,xres={edid_width},yres={edid_height}",
+        ]
+    else:
+        command += ["-vga", args.vga]
     command += [
-        "-vga", args.vga,
         "-display", "none",
         "-serial", f"file:{serial_path}",
         "-monitor", "none",
@@ -329,6 +437,68 @@ def qemu_command(args: argparse.Namespace, workdir: Path, qmp_socket: Path,
     return command, vars_copy
 
 
+def tap_keys(qmp: Qmp, *keys: str) -> None:
+    qmp.command("send-key", {
+        "keys": [{"type": "qcode", "data": key} for key in keys]
+    })
+
+
+def capture_start_menu_evidence(qmp: Qmp, outdir: Path) -> list[str]:
+    """Exercise Kickoff with the keyboard and save inspectable screenshots.
+
+    This is visual evidence, not a text assertion: a reviewer can see the open
+    menu, the search result and the launched Firefox window. The automation is
+    intentionally best-effort so a compositor shortcut change cannot turn the
+    release gate into a spurious failure.
+    """
+    captured: list[str] = []
+    tap_keys(qmp, "alt", "f1")
+    time.sleep(3.0)
+    path, _ = capture_screenshot(qmp, outdir, "startmenu")
+    captured.append(str(path))
+    log(f"Start menu screenshot: {path.name}")
+
+    for key in "firefox":
+        tap_keys(qmp, key)
+        time.sleep(0.15)
+    time.sleep(3.0)
+    path, _ = capture_screenshot(qmp, outdir, "startmenu-search")
+    captured.append(str(path))
+    log(f"Start menu search screenshot: {path.name}")
+
+    tap_keys(qmp, "ret")
+    time.sleep(12.0)
+    path, _ = capture_screenshot(qmp, outdir, "firefox-launched")
+    captured.append(str(path))
+    log(f"Firefox launch screenshot: {path.name}")
+    return captured
+
+
+def close_live_welcome(qmp: Qmp) -> None:
+    """Close the XDG-autostart welcome terminal in a headless screenshot run.
+
+    The terminal is started after the panel and may not yet exist when the
+    boot marker appears. Focus it with the window switcher first; Alt+F4 on
+    an unfocused desktop/panel would otherwise do nothing.
+    """
+    time.sleep(4.0)
+    for _ in range(2):
+        qmp.command("send-key", {
+            "keys": [
+                {"type": "qcode", "data": "alt"},
+                {"type": "qcode", "data": "tab"},
+            ]
+        })
+        time.sleep(1.0)
+        qmp.command("send-key", {
+            "keys": [
+                {"type": "qcode", "data": "alt"},
+                {"type": "qcode", "data": "f4"},
+            ]
+        })
+        time.sleep(2.0)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--firmware", choices=("uefi", "bios"), default="uefi")
@@ -343,10 +513,34 @@ def main() -> int:
         help="QEMU machine type (default: q35; pc for VirtualBox-like IDE)",
     )
     parser.add_argument(
+        "--expect-session",
+        choices=("wayland", "x11", "greeter"),
+        default=None,
+        help="Require the live session named in the boot marker",
+    )
+    parser.add_argument(
         "--vga",
         choices=("std", "vmware"),
         default="std",
         help="QEMU VGA adapter (default: std; vmware is VMSVGA-like)",
+    )
+    parser.add_argument(
+        "--video-edid",
+        metavar="WxH",
+        help="Expose a synthetic EDID mode, for example 1920x1080 (std VGA only)",
+    )
+    parser.add_argument(
+        "--expect-display",
+        metavar="WxH",
+        help=(
+            "Require this framebuffer size; use when the guest may fit a "
+            "smaller mode than the EDID host size"
+        ),
+    )
+    parser.add_argument(
+        "--check-panel",
+        action="store_true",
+        help="Require the whole bottom panel to be visible in the final screenshot",
     )
     parser.add_argument(
         "--optical",
@@ -368,6 +562,16 @@ def main() -> int:
     )
     parser.add_argument("--outdir", required=True)
     parser.add_argument(
+        "--close-welcome",
+        action="store_true",
+        help="send Alt+F4 after the marker to close the live welcome terminal before the final screenshot",
+    )
+    parser.add_argument(
+        "--start-menu",
+        action="store_true",
+        help="open Kickoff, search for Firefox, launch it and save visual evidence",
+    )
+    parser.add_argument(
         "--screenshot-interval",
         type=int,
         default=30,
@@ -385,6 +589,8 @@ def main() -> int:
     outdir = Path(args.outdir).resolve()
     if not iso.is_file():
         die(f"ISO not found: {iso}")
+    if args.expect_display:
+        parse_edid(args.expect_display)
     outdir.mkdir(parents=True, exist_ok=True)
 
     serial_path = outdir / "serial.log"
@@ -405,6 +611,7 @@ def main() -> int:
     failed_units: int | None = None
     screenshot_result: dict | None = None
     early_screenshots: list[str] = []
+    startmenu_screenshots: list[str] = []
     final_png: Path | None = None
     failure_reason = ""
 
@@ -493,9 +700,39 @@ def main() -> int:
         elif failed_units is not None and failed_units != 0:
             failure_reason = f"{failed_units} systemd unit(s) failed in the live session"
             log(failure_reason)
+        elif args.expect_session:
+            session_match = re.search(r"(?:^|\s)session=(\S+)", marker_line)
+            actual_session = session_match.group(1) if session_match else "unknown"
+            if actual_session != args.expect_session:
+                failure_reason = (
+                    f"expected the {args.expect_session} session but the guest "
+                    f"reported {actual_session}"
+                )
+                log(failure_reason)
+            else:
+                log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
+                if args.close_welcome and qmp is not None:
+                    try:
+                        close_live_welcome(qmp)
+                        log("Closed the live welcome terminal for a clean screenshot")
+                    except Exception as exc:
+                        log(f"warning: could not close welcome terminal: {exc}")
+                time.sleep(8.0)
         else:
             log(f"Boot marker seen after {elapsed:.1f}s: {marker_line}")
+            if args.close_welcome and qmp is not None:
+                try:
+                    close_live_welcome(qmp)
+                    log("Closed the live welcome terminal for a clean screenshot")
+                except Exception as exc:
+                    log(f"warning: could not close welcome terminal: {exc}")
             time.sleep(8.0)
+
+        if args.start_menu and qmp is not None and not failure_reason:
+            try:
+                startmenu_screenshots = capture_start_menu_evidence(qmp, outdir)
+            except Exception as exc:
+                log(f"warning: Start menu visual evidence failed: {exc}")
 
         if qmp is None:
             try:
@@ -523,6 +760,34 @@ def main() -> int:
                 )
                 if not failure_reason and not screenshot_result["meaningful"]:
                     failure_reason = "framebuffer screenshot is blank or nearly blank"
+                    log(failure_reason)
+                panel_info = screenshot_result.get("panel") or {}
+                if panel_info:
+                    log(
+                        "Panel: "
+                        f"visible={panel_info.get('visible')} "
+                        f"top={panel_info.get('top', '?')} "
+                        f"bottom={panel_info.get('bottom', '?')} "
+                        f"height={panel_info.get('height', '?')} "
+                        f"gap={panel_info.get('gap', '?')} "
+                        f"span={panel_info.get('span', '?')}"
+                    )
+                expected_display = args.expect_display or args.video_edid
+                if not failure_reason and expected_display:
+                    expected_size = parse_edid(expected_display)
+                    actual_size = (
+                        screenshot_result["width"],
+                        screenshot_result["height"],
+                    )
+                    if actual_size != expected_size:
+                        failure_reason = (
+                            f"expected display {expected_size[0]}x{expected_size[1]} "
+                            f"but framebuffer is {actual_size[0]}x{actual_size[1]}"
+                        )
+                        log(failure_reason)
+                if not failure_reason and args.check_panel and not panel_info.get("visible"):
+                    reason = panel_info.get("reason", "unknown panel detection failure")
+                    failure_reason = f"bottom panel is not fully visible: {reason}"
                     log(failure_reason)
             except Exception as exc:
                 if not failure_reason:
@@ -557,8 +822,12 @@ def main() -> int:
         "firmware": args.firmware,
         "machine": args.machine,
         "vga": args.vga,
+        "video_edid": args.video_edid,
+        "expect_display": args.expect_display,
+        "check_panel": args.check_panel,
         "optical": args.optical,
         "boot_mode": "direct-kernel" if args.direct_kernel else "iso",
+        "close_welcome": args.close_welcome,
         "kernel": str(Path(args.kernel).resolve()) if args.direct_kernel else None,
         "initrd": str(Path(args.initrd).resolve()) if args.direct_kernel else None,
         "kernel_append": args.kernel_append if args.direct_kernel else None,
@@ -571,6 +840,7 @@ def main() -> int:
         "screenshot": str(final_png) if final_png else None,
         "screenshot_info": screenshot_result,
         "early_screenshots": early_screenshots,
+        "startmenu_screenshots": startmenu_screenshots,
         "result": "pass" if not failure_reason else "fail",
         "failure_reason": failure_reason,
     }

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Switch EclipseOS theme
+Comment=Toggle between the EclipseOS light and dark colour schemes
+Exec=/usr/local/bin/eclipseos-theme toggle
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=theme;appearance;dark;light;colours;colors;

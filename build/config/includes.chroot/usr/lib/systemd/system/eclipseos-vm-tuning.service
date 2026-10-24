@@ -1,0 +1,12 @@
+[Unit]
+Description=EclipseOS virtual-machine desktop tuning
+After=local-fs.target
+Before=sddm.service display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/eclipseos/eclipseos-vm-tuning
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
