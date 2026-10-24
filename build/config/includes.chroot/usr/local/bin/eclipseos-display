@@ -1,0 +1,338 @@
+#!/bin/sh
+#
+# Select a safe X11 display mode for virtual machines.
+#
+# VirtualBox's VMSVGA adapter commonly starts at 1280x800 without Guest
+# Additions. That is taller than a 1366x768 host, so the bottom of the guest
+# desktop (including the Eclipse taskbar) is clipped even though the guest
+# believes the whole screen is visible. Guest Additions are deliberately not
+# shipped, so the guest cannot ask VirtualBox for the host window size.
+#
+# Instead, the VM session selects the largest available mode that fits a
+# conservative 1280x720 target. 1280x720 fits a 1366x768 host with room for
+# window decorations and is a standard mode on most virtual adapters. If the
+# adapter does not advertise it, the script tries to add a CVT 1280x720 mode
+# and then falls back to the smallest useful mode that still fits 1360x768.
+#
+# Usage: eclipseos-display [fit|guard|panel|status]
+#
+# `fit` is called by the EclipseOS X11 session wrapper before Plasma starts
+# and is also available to the user. `guard` is the XDG autostart watcher: it
+# re-anchors the panel when the resolution changes. Physical machines and
+# non-X11 sessions are never modified. A kernel command line of
+# `eclipseos.display=keep` disables the mode change for evidence boots, and
+# `eclipseos.display=WxH` overrides the target size.
+set -u
+
+TARGET_DEFAULT=1280x720
+SIZE_PATTERN='^[0-9][0-9]*x[0-9][0-9]*$'
+XRANDR="${ECLIPSEOS_XRANDR:-xrandr}"
+
+log() {
+    logger -t eclipseos-display "$*" 2>/dev/null || true
+}
+
+runtime_dir() {
+    if [ -n "${XDG_RUNTIME_DIR:-}" ] && [ -d "$XDG_RUNTIME_DIR" ]; then
+        printf '%s\n' "$XDG_RUNTIME_DIR"
+    else
+        printf '/run/user/%s\n' "$(id -u)"
+    fi
+}
+
+status_file() {
+    printf '%s/eclipseos-display\n' "$(runtime_dir)"
+}
+
+kernel_value() {
+    key="$1"
+    # The kernel command line is whitespace-separated; word splitting is intended.
+    # shellcheck disable=SC2013
+    for argument in $(cat /proc/cmdline 2>/dev/null); do
+        case "$argument" in
+            "$key"=*) printf '%s\n' "${argument#*=}"; return 0 ;;
+        esac
+    done
+    return 1
+}
+
+is_vm() {
+    command -v systemd-detect-virt >/dev/null 2>&1 &&
+        systemd-detect-virt --vm --quiet 2>/dev/null
+}
+
+write_status() {
+    file="$(status_file)"
+    install -d -m 0700 "$(dirname "$file")" 2>/dev/null || true
+    {
+        printf 'screen=%s\n' "${screen:-unknown}"
+        printf 'mode=%s\n' "${mode:-unknown}"
+        printf 'output=%s\n' "${output:-unknown}"
+        printf 'target=%s\n' "${target:-$TARGET_DEFAULT}"
+        printf 'source=%s\n' "${source:-unknown}"
+        printf 'virtual=%s\n' "${virtual:-1}"
+    } >"$file"
+    chmod 0644 "$file" 2>/dev/null || true
+}
+
+screen_geometry() {
+    "$XRANDR" --query 2>/dev/null |
+        sed -n 's/^Screen 0:.*current \([0-9][0-9]*\) x \([0-9][0-9]*\).*/\1x\2/p' |
+        head -n 1
+}
+
+connected_output() {
+    "$XRANDR" --query 2>/dev/null | awk '
+        $2 == "connected" {
+            if ($3 == "primary") primary = $1
+            if (first == "") first = $1
+        }
+        END {
+            if (primary != "") print primary
+            else if (first != "") print first
+        }
+    '
+}
+
+output_modes() {
+    output_name="$1"
+    "$XRANDR" --query 2>/dev/null | awk -v output="$output_name" '
+        /^[^[:space:]]/ { in_output = ($1 == output); next }
+        in_output && $1 ~ /^[0-9]+x[0-9]+$/ { print $1, $2 }
+    '
+}
+
+# Pick the largest landscape mode within the target. If none fits, try the
+# 1360x768 fallback class, which is the next size that can fit a 1366x768
+# laptop screen. The target itself always wins when it is advertised.
+choose_mode() {
+    modes="$1"
+    target="$2"
+    target_width="${target%x*}"
+    target_height="${target#*x}"
+    printf '%s\n' "$modes" | awk \
+        -v tw="$target_width" -v th="$target_height" '
+        {
+            mode = $1
+            split(mode, dimensions, "x")
+            width = dimensions[1] + 0
+            height = dimensions[2] + 0
+            if (width < height) next
+
+            area = width * height
+            if (mode == tw "x" th) {
+                exact = mode
+                next
+            }
+            if (width <= tw && height <= th && area > fit_area) {
+                fit = mode
+                fit_area = area
+            }
+            if (width <= 1360 && height <= 768 && area > fallback_area) {
+                fallback = mode
+                fallback_area = area
+            }
+        }
+        END {
+            if (exact != "") print exact
+            else if (fit != "") print fit
+            else if (fallback != "") print fallback
+        }
+    '
+}
+
+# A virtual adapter may expose only its host default. Try to add the standard
+# CVT mode before falling back to the adapter's smaller modes. This is a
+# best-effort operation; a rejected modeline leaves the current mode intact.
+try_target_modeline() {
+    target="$1"
+    target_width="${target%x*}"
+    target_height="${target#*x}"
+    name="EclipseOS-${target_width}x${target_height}"
+
+    if "$XRANDR" --query 2>/dev/null | grep -Eq "[[:space:]]${name}[[:space:]]"; then
+        printf '%s\n' "$name"
+        return 0
+    fi
+    command -v cvt >/dev/null 2>&1 || return 1
+    modeline="$(cvt "$target_width" "$target_height" 60 2>/dev/null |
+        sed -n 's/^Modeline //p' | head -n 1)"
+    [ -n "$modeline" ] || return 1
+
+    # shellcheck disable=SC2086 # CVT output is a deliberate argument list.
+    set -- $modeline
+    shift
+    "$XRANDR" --newmode "$name" "$@" >/dev/null 2>&1 || return 1
+    "$XRANDR" --addmode "$output" "$name" >/dev/null 2>&1 || return 1
+    printf '%s\n' "$name"
+}
+
+apply_mode() {
+    mode="$1"
+    expected="$2"
+    "$XRANDR" --output "$output" --mode "$mode" >/dev/null 2>&1 || return 1
+    # The server applies the mode asynchronously. Give it a moment before
+    # reading the geometry back so the status file reflects the real result.
+    sleep 1
+    actual="$(screen_geometry)"
+    [ "$actual" = "$expected" ] || return 1
+    screen="$actual"
+    return 0
+}
+
+do_fit() {
+    if ! is_vm; then
+        return 0
+    fi
+    if [ -z "${DISPLAY:-}" ] || ! command -v "$XRANDR" >/dev/null 2>&1; then
+        log "no X11 xrandr available; leaving the display unchanged"
+        return 0
+    fi
+
+    target="$(kernel_value eclipseos.display || true)"
+    case "$target" in
+        keep)
+            source=keep
+            screen="$(screen_geometry || true)"
+            write_status
+            log "display fit disabled by eclipseos.display=keep"
+            return 0
+            ;;
+        "")
+            target="$TARGET_DEFAULT"
+            ;;
+        *)
+            if ! printf '%s\n' "$target" | grep -Eq "$SIZE_PATTERN"; then
+                log "ignoring invalid eclipseos.display=$target"
+                target="$TARGET_DEFAULT"
+            fi
+            ;;
+    esac
+
+    screen="$(screen_geometry || true)"
+    output="$(connected_output || true)"
+    if [ -z "$screen" ] || [ -z "$output" ]; then
+        source=unavailable
+        log "could not read the X11 screen or connected output"
+        write_status
+        return 0
+    fi
+
+    modes="$(output_modes "$output")"
+    mode="$(choose_mode "$modes" "$target" || true)"
+    source=fit
+
+    if [ -z "$mode" ]; then
+        mode="$(try_target_modeline "$target" || true)"
+        source=modeline
+    fi
+
+    if [ -z "$mode" ]; then
+        source=fallback
+        log "no mode fits $target; keeping the current $screen mode"
+        mode="$screen"
+        write_status
+        return 0
+    fi
+
+    if [ "$mode" = "$screen" ]; then
+        source=already-fits
+        write_status
+        return 0
+    fi
+
+    mode_dimensions="${mode#EclipseOS-}"
+    case "$mode_dimensions" in
+        *x*) ;;
+        *) mode_dimensions="$screen" ;;
+    esac
+
+    if ! apply_mode "$mode" "$mode_dimensions"; then
+        source=apply-failed
+        log "could not apply mode $mode; keeping $screen"
+        mode="$screen"
+        write_status
+        return 0
+    fi
+
+    write_status
+    log "selected $screen on $output (target $target, source $source)"
+}
+
+qdbus_bin() {
+    if command -v qdbus6 >/dev/null 2>&1; then
+        printf 'qdbus6\n'
+    elif command -v qdbus >/dev/null 2>&1; then
+        printf 'qdbus\n'
+    else
+        return 1
+    fi
+}
+
+reanchor_panel() {
+    dbus_tool="$(qdbus_bin || true)"
+    [ -n "$dbus_tool" ] || return 1
+    script='var count = 0; for (var i = 0; i < panelIds.length; i++) { var p = panelById(panelIds[i]); if (!p) continue; p.location = "bottom"; p.alignment = "center"; p.offset = 0; count++; } print("eclipseos-panel-guard panels=" + count);'
+    "$dbus_tool" org.kde.plasmashell /PlasmaShell \
+        org.kde.PlasmaShell.evaluateScript "$script" >/dev/null 2>&1
+}
+
+do_panel() {
+    is_vm || return 0
+    if reanchor_panel; then
+        log "re-anchored the panel to the bottom edge"
+        return 0
+    fi
+    log "could not re-anchor the panel; Plasma D-Bus is not ready"
+    return 1
+}
+
+do_guard() {
+    is_vm || return 0
+    [ -n "${DISPLAY:-}" ] || return 0
+    command -v "$XRANDR" >/dev/null 2>&1 || return 0
+
+    # Plasma starts its panel after this XDG autostart entry. Retry until the
+    # shell D-Bus service is available, then put the panel on the bottom edge.
+    attempt=0
+    while [ "$attempt" -lt 30 ]; do
+        if reanchor_panel; then
+            break
+        fi
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+
+    last="$(screen_geometry || true)"
+    while :; do
+        sleep 3
+        current="$(screen_geometry || true)"
+        [ -n "$current" ] || continue
+        if [ "$current" != "$last" ]; then
+            log "resolution changed from $last to $current; re-anchoring panel"
+            reanchor_panel || true
+            last="$current"
+        fi
+    done
+}
+
+do_status() {
+    file="$(status_file)"
+    if [ -r "$file" ]; then
+        cat "$file"
+        return 0
+    fi
+    printf 'screen=%s\n' "$(screen_geometry 2>/dev/null || printf unknown)"
+}
+
+action="${1:-fit}"
+case "$action" in
+    fit) do_fit ;;
+    guard) do_guard ;;
+    panel) do_panel ;;
+    status) do_status ;;
+    *)
+        printf 'Usage: %s [fit|guard|panel|status]\n' "$0" >&2
+        exit 2
+        ;;
+esac

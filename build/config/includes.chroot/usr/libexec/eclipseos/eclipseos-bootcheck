@@ -34,6 +34,15 @@ theme_details() {
         "${scheme:-unknown}" "${plasma_theme:-unknown}" "${lookandfeel:-unknown}"
 }
 
+display_details() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    display_file="/run/user/${live_uid}/eclipseos-display"
+    display="$(read_key "$display_file" screen)"
+    display_source="$(read_key "$display_file" source)"
+    printf ' display=%s display_source=%s' \
+        "${display:-unknown}" "${display_source:-unknown}"
+}
+
 emit() {
     printf '%s\n' "$1"
     if [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ]; then
@@ -88,7 +97,7 @@ if grep -qw 'eclipseos.autologin=off' /proc/cmdline 2>/dev/null; then
     fi
     vm_tuning=0
     [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
-    emit "$MARKER_PREFIX stage=greeter session=greeter theme=${theme}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+    emit "$MARKER_PREFIX stage=greeter session=greeter theme=${theme}$(theme_details)$(display_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
     if [ "$failed_units" -eq 0 ]; then
         exit 0
     fi
@@ -164,7 +173,7 @@ fi
 vm_tuning=0
 [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details)$(display_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.

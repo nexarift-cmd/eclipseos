@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# EclipseOS Plasma X11 session entry point.
+#
+# Virtual machines get a display mode that fits common host screens before
+# Plasma creates its panel. SDDM still starts the X server at the adapter's
+# default (often 1280x800), so doing this here prevents the panel from being
+# created below the visible host window. Physical machines are untouched.
+set -u
+
+/usr/local/bin/eclipseos-display fit || true
+
+exec /usr/bin/startplasma-x11

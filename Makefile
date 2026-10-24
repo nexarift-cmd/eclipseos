@@ -11,7 +11,7 @@ SHA256 := $(ISO).sha256
 VM_NAME ?= EclipseOS-$(VERSION)
 VM_DIR ?= $(HOME)/VirtualBox VMs
 
-.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-vbox-uefi test-vbox-unattended test-theme-light test-1920-dark test-sddm test-all test-vm clean distclean
+.PHONY: all help assets doctor iso iso-strict checksum verify static-check test test-uefi test-bios test-1366x768 test-vbox-uefi test-vbox-unattended test-theme-light test-1920-dark test-sddm test-all test-vm clean distclean
 
 all: iso
 
@@ -29,6 +29,7 @@ help:
 	  '  make test        Alias for test-all' \
 	  '  make test-uefi   Boot-test the ISO in QEMU with UEFI/OVMF' \
 	  '  make test-bios   Boot-test the ISO in QEMU with legacy BIOS' \
+	  '  make test-1366x768  Simulate a 1366x768 host; require a fitted mode and a fully visible panel' \
 	  '  make test-vbox-uefi  UEFI + pc machine + IDE optical + standard VGA, 2048 MiB' \
 	  '  make test-vbox-unattended  Manual negative control: no boot=live on the command line' \
 	  '  make test-theme-light  Light-theme boot + 1920x1080 screenshot evidence' \
@@ -68,6 +69,20 @@ test-uefi:
 test-bios:
 	@./scripts/test-qemu.sh --firmware bios --iso "$(ISO)"
 
+# A 1366x768 host is the common laptop that exposed the 1280x800 guest
+# clipping bug. The QEMU EDID represents the host screen; the guest starts
+# there, then eclipseos-display must fit the largest available mode inside
+# 1280x720. The screenshot is additionally checked for a complete floating
+# bottom panel (both edges on-screen and horizontally centred).
+test-1366x768:
+	@./scripts/test-qemu.sh \
+		--firmware uefi \
+		--video-edid 1366x768 \
+		--expect-display 1280x720 \
+		--check-panel \
+		--close-welcome \
+		--iso "$(ISO)"
+
 # VirtualBox's default storage profile: pc/IDE optical, 2048 MiB. Use the
 # standard QEMU VGA adapter rather than -vga vmware: QEMU's VMware SVGA is not
 # a VMware hypervisor, so Linux' vmwgfx refuses to probe it and the graphical
@@ -106,13 +121,15 @@ test-theme-light:
 		--firmware bios \
 		--direct-kernel-live \
 		--video-edid 1920x1080 \
-		--kernel-append-extra "eclipseos.theme=light eclipseos.nowelcome=1" \
+		--kernel-append-extra "eclipseos.theme=light eclipseos.nowelcome=1 eclipseos.display=keep" \
 		--iso "$(ISO)"
 
 test-1920-dark:
 	@./scripts/test-qemu.sh \
 		--firmware uefi \
+		--direct-kernel-live \
 		--video-edid 1920x1080 \
+		--kernel-append-extra "eclipseos.display=keep" \
 		--close-welcome \
 		--start-menu \
 		--iso "$(ISO)"
@@ -125,11 +142,11 @@ test-sddm:
 		--firmware uefi \
 		--direct-kernel-live \
 		--video-edid 1920x1080 \
-		--kernel-append-extra "eclipseos.autologin=off" \
+		--kernel-append-extra "eclipseos.autologin=off eclipseos.display=keep" \
 		--expect-session greeter \
 		--iso "$(ISO)"
 
-test-all: test-uefi test-bios test-vbox-uefi
+test-all: test-uefi test-bios test-1366x768 test-vbox-uefi
 
 test-vm: iso
 	@./scripts/create-vbox-vm.sh --iso "$(ISO)" --name "$(VM_NAME)" --start

@@ -210,6 +210,93 @@ def capture_screenshot(
         ppm_path.unlink(missing_ok=True)
 
 
+def inspect_panel(pixels: bytes, width: int, height: int) -> dict:
+    """Locate the floating bottom panel from its horizontal edges.
+
+    A panel is a wide, short rectangle near the bottom edge. Its top and
+    bottom edges are strong full-row colour transitions; the wallpaper gap
+    below the floating panel is not. Looking for the lowest strong edge and
+    the nearest edge above it avoids mistaking a maximised window's bottom
+    edge for the panel. The check fails when the panel is clipped: a cropped
+    panel has no bottom edge near the screen bottom.
+    """
+    scan_start = max(0, height - 160)
+    strong_threshold = max(32, width // 5)
+    candidates: list[dict[str, int]] = []
+
+    for y in range(scan_start, height - 1):
+        row = y * width * 3
+        next_row = (y + 1) * width * 3
+        count = 0
+        min_x = width
+        max_x = -1
+        for x in range(width):
+            offset = x * 3
+            first = row + offset
+            second = next_row + offset
+            delta = (
+                abs(pixels[first] - pixels[second])
+                + abs(pixels[first + 1] - pixels[second + 1])
+                + abs(pixels[first + 2] - pixels[second + 2])
+            )
+            if delta > 8:
+                count += 1
+                min_x = min(min_x, x)
+                max_x = max(max_x, x)
+        if count >= strong_threshold:
+            candidates.append({"y": y, "count": count, "min_x": min_x, "max_x": max_x})
+
+    if not candidates:
+        return {"visible": False, "reason": "no panel edge found"}
+
+    bottom = max(candidates, key=lambda edge: edge["y"])
+    gap = height - 1 - bottom["y"]
+    if not 0 <= gap <= 20:
+        return {
+            "visible": False,
+            "reason": f"lowest panel edge is {gap}px above the screen bottom",
+        }
+
+    # The nearest strong edge at least one panel-height above the bottom edge
+    # is the top of the panel. A window edge further up is not considered.
+    upper = [
+        edge
+        for edge in candidates
+        if 30 <= bottom["y"] - edge["y"] <= 120
+    ]
+    if not upper:
+        return {
+            "visible": False,
+            "reason": "panel top edge is missing or outside the screen",
+            "bottom": bottom["y"],
+            "gap": gap,
+        }
+    top = max(upper, key=lambda edge: edge["y"])
+    panel_height = bottom["y"] - top["y"] + 1
+    span = top["max_x"] - top["min_x"] + 1
+    center = (top["min_x"] + top["max_x"]) / 2
+    center_offset = abs(center - (width - 1) / 2)
+    info = {
+        "visible": True,
+        "top": top["y"],
+        "bottom": bottom["y"],
+        "height": panel_height,
+        "gap": gap,
+        "span": span,
+        "center_offset": round(center_offset, 1),
+    }
+    if not 20 <= panel_height <= 120:
+        info.update(visible=False, reason=f"unexpected panel height {panel_height}px")
+    elif span < max(120, int(width * 0.15)):
+        info.update(visible=False, reason=f"panel edge is only {span}px wide")
+    elif center_offset > max(10, width * 0.03):
+        info.update(
+            visible=False,
+            reason=f"panel is {center_offset:.0f}px off the horizontal centre",
+        )
+    return info
+
+
 def inspect_ppm(ppm_path: Path) -> dict:
     """Report whether the framebuffer contains meaningful content."""
     data = ppm_path.read_bytes()
@@ -244,6 +331,7 @@ def inspect_ppm(ppm_path: Path) -> dict:
         "non_black_ratio": round(non_black_ratio, 6),
         "unique_colours": len(colours),
         "meaningful": non_black_ratio >= 0.002 and len(colours) >= 4,
+        "panel": inspect_panel(pixels, width, height),
     }
 
 
@@ -442,6 +530,19 @@ def main() -> int:
         help="Expose a synthetic EDID mode, for example 1920x1080 (std VGA only)",
     )
     parser.add_argument(
+        "--expect-display",
+        metavar="WxH",
+        help=(
+            "Require this framebuffer size; use when the guest may fit a "
+            "smaller mode than the EDID host size"
+        ),
+    )
+    parser.add_argument(
+        "--check-panel",
+        action="store_true",
+        help="Require the whole bottom panel to be visible in the final screenshot",
+    )
+    parser.add_argument(
         "--optical",
         choices=("auto", "ide"),
         default="auto",
@@ -488,6 +589,8 @@ def main() -> int:
     outdir = Path(args.outdir).resolve()
     if not iso.is_file():
         die(f"ISO not found: {iso}")
+    if args.expect_display:
+        parse_edid(args.expect_display)
     outdir.mkdir(parents=True, exist_ok=True)
 
     serial_path = outdir / "serial.log"
@@ -658,18 +761,34 @@ def main() -> int:
                 if not failure_reason and not screenshot_result["meaningful"]:
                     failure_reason = "framebuffer screenshot is blank or nearly blank"
                     log(failure_reason)
-                if not failure_reason and args.video_edid:
-                    expected_size = parse_edid(args.video_edid)
+                panel_info = screenshot_result.get("panel") or {}
+                if panel_info:
+                    log(
+                        "Panel: "
+                        f"visible={panel_info.get('visible')} "
+                        f"top={panel_info.get('top', '?')} "
+                        f"bottom={panel_info.get('bottom', '?')} "
+                        f"height={panel_info.get('height', '?')} "
+                        f"gap={panel_info.get('gap', '?')} "
+                        f"span={panel_info.get('span', '?')}"
+                    )
+                expected_display = args.expect_display or args.video_edid
+                if not failure_reason and expected_display:
+                    expected_size = parse_edid(expected_display)
                     actual_size = (
                         screenshot_result["width"],
                         screenshot_result["height"],
                     )
                     if actual_size != expected_size:
                         failure_reason = (
-                            f"EDID requested {expected_size[0]}x{expected_size[1]} "
+                            f"expected display {expected_size[0]}x{expected_size[1]} "
                             f"but framebuffer is {actual_size[0]}x{actual_size[1]}"
                         )
                         log(failure_reason)
+                if not failure_reason and args.check_panel and not panel_info.get("visible"):
+                    reason = panel_info.get("reason", "unknown panel detection failure")
+                    failure_reason = f"bottom panel is not fully visible: {reason}"
+                    log(failure_reason)
             except Exception as exc:
                 if not failure_reason:
                     failure_reason = f"screenshot failed: {exc}"
@@ -704,6 +823,8 @@ def main() -> int:
         "machine": args.machine,
         "vga": args.vga,
         "video_edid": args.video_edid,
+        "expect_display": args.expect_display,
+        "check_panel": args.check_panel,
         "optical": args.optical,
         "boot_mode": "direct-kernel" if args.direct_kernel else "iso",
         "close_welcome": args.close_welcome,

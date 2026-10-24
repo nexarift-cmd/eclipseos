@@ -17,6 +17,8 @@ CPUS=2
 MACHINE="q35"
 VGA="std"
 VIDEO_EDID=""
+EXPECT_DISPLAY=""
+CHECK_PANEL=0
 OPTICAL="auto"
 EXPECT_SESSION="x11"
 DIRECT_KERNEL=0
@@ -55,6 +57,10 @@ Options:
   --vga std|vmware      VGA adapter (default: std; vmware is VMSVGA-like)
   --video-edid WxH      Expose a synthetic EDID mode (for example 1920x1080;
                         requires --vga std; test-only display evidence)
+  --expect-display WxH  Require the final framebuffer size. Use when the guest
+                        fits a smaller mode than the EDID host size.
+  --check-panel         Require the whole bottom panel to be visible in the
+                        final screenshot (top and bottom edges on-screen)
   --optical auto|ide    Optical attachment (default: auto; ide uses pc secondary master)
   --expect-session x11|wayland|greeter
                         Session required in the boot marker (default: x11,
@@ -86,6 +92,8 @@ while [[ $# -gt 0 ]]; do
         --machine) MACHINE="${2:?--machine requires q35 or pc}"; shift 2 ;;
         --vga) VGA="${2:?--vga requires std or vmware}"; shift 2 ;;
         --video-edid) VIDEO_EDID="${2:?--video-edid requires WxH}"; shift 2 ;;
+        --expect-display) EXPECT_DISPLAY="${2:?--expect-display requires WxH}"; shift 2 ;;
+        --check-panel) CHECK_PANEL=1; shift ;;
         --optical) OPTICAL="${2:?--optical requires auto or ide}"; shift 2 ;;
         --expect-session) EXPECT_SESSION="${2:?--expect-session requires x11 or wayland}"; shift 2 ;;
         --direct-kernel-no-live) DIRECT_KERNEL=1; DIRECT_LIVE=0; shift ;;
@@ -132,6 +140,11 @@ if [[ -n "$VIDEO_EDID" ]]; then
         printf 'error: --video-edid requires --vga std\n' >&2
         exit 2
     fi
+fi
+if [[ -n "$EXPECT_DISPLAY" ]] &&
+    [[ ! "$EXPECT_DISPLAY" =~ ^[0-9]{3,4}x[0-9]{3,4}$ ]]; then
+    printf 'error: --expect-display must look like 1280x720\n' >&2
+    exit 2
 fi
 
 if [[ ! -f "$ISO" ]]; then
@@ -229,6 +242,12 @@ if [[ -z "$OUTDIR" ]]; then
     if [[ -n "$VIDEO_EDID" ]]; then
         MODE_SUFFIX="${MODE_SUFFIX}-edid-${VIDEO_EDID}"
     fi
+    if [[ -n "$EXPECT_DISPLAY" ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-expect-${EXPECT_DISPLAY}"
+    fi
+    if [[ "$CHECK_PANEL" -eq 1 ]]; then
+        MODE_SUFFIX="${MODE_SUFFIX}-panel"
+    fi
     OUTDIR="$ROOT_DIR/tests/out/$(date -u '+%Y%m%dT%H%M%SZ')-${FIRMWARE}-${MACHINE}-${OPTICAL}-${VGA}${MODE_SUFFIX}"
 fi
 mkdir -p "$OUTDIR"
@@ -247,6 +266,12 @@ python_args=(
 )
 if [[ -n "$VIDEO_EDID" ]]; then
     python_args+=(--video-edid "$VIDEO_EDID")
+fi
+if [[ -n "$EXPECT_DISPLAY" ]]; then
+    python_args+=(--expect-display "$EXPECT_DISPLAY")
+fi
+if [[ "$CHECK_PANEL" -eq 1 ]]; then
+    python_args+=(--check-panel)
 fi
 if [[ "$CLOSE_WELCOME" -eq 1 ]]; then
     python_args+=(--close-welcome)

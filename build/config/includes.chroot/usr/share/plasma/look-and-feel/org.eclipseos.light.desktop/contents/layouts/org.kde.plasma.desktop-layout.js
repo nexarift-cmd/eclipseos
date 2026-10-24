@@ -13,6 +13,7 @@ panel.location = "bottom"
 panel.height = 48
 panel.lengthMode = "fit"
 panel.alignment = "center"
+panel.offset = 0
 panel.floating = true
 panel.opacity = "translucent"
 

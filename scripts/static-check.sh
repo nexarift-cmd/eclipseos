@@ -110,7 +110,8 @@ if command -v desktop-file-validate >/dev/null 2>&1; then
         "$ROOT_DIR/build/config/includes.chroot/usr/share/xsessions/eclipseos-x11.desktop" \
         "$ROOT_DIR/build/config/includes.chroot/usr/share/applications/org.eclipseos.theme-toggle.desktop" \
         "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.welcome.desktop" \
-        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.theme-apply.desktop"
+        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.theme-apply.desktop" \
+        "$ROOT_DIR/build/config/includes.chroot/etc/xdg/autostart/org.eclipseos.display-guard.desktop"
     printf '  ok\n'
 fi
 
