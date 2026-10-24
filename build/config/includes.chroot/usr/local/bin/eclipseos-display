@@ -89,6 +89,7 @@ write_status() {
         printf 'output=%s\n' "${output:-unknown}"
         printf 'target=%s\n' "${target:-$TARGET_DEFAULT}"
         printf 'source=%s\n' "${source:-unknown}"
+        printf 'modeline=%s\n' "${modeline_status:-none}"
         printf 'virtual=%s\n' "${virtual:-1}"
     } >"$file"
     chmod 0644 "$file" 2>/dev/null || true
@@ -168,22 +169,43 @@ try_target_modeline() {
     target_width="${target%x*}"
     target_height="${target#*x}"
     name="EclipseOS-${target_width}x${target_height}"
+    modeline_result=""
 
     if "$XRANDR" --query 2>/dev/null | grep -Eq "[[:space:]]${name}[[:space:]]"; then
-        printf '%s\n' "$name"
+        modeline_status=existing
+        modeline_result="$name"
         return 0
     fi
-    command -v cvt >/dev/null 2>&1 || return 1
-    modeline="$(cvt "$target_width" "$target_height" 60 2>/dev/null |
-        sed -n 's/^Modeline //p' | head -n 1)"
+
+    if command -v cvt >/dev/null 2>&1; then
+        modeline="$(cvt "$target_width" "$target_height" 60 2>/dev/null |
+            sed -n 's/^Modeline //p' | head -n 1)"
+        modeline_status=cvt
+    elif [ "$target" = "1280x720" ]; then
+        # Standard CVT 1280x720@60 timing. Keep this fallback so a missing cvt
+        # binary does not leave the VM at 800x600.
+        modeline='"1280x720_60.00" 74.48 1280 1336 1472 1664 720 721 724 746 -HSync +Vsync'
+        modeline_status=builtin
+    else
+        modeline=""
+        modeline_status=cvt-missing
+    fi
     [ -n "$modeline" ] || return 1
 
     # shellcheck disable=SC2086 # CVT output is a deliberate argument list.
     set -- $modeline
     shift
-    "$XRANDR" --newmode "$name" "$@" >/dev/null 2>&1 || return 1
-    "$XRANDR" --addmode "$output" "$name" >/dev/null 2>&1 || return 1
-    printf '%s\n' "$name"
+    if ! error="$("$XRANDR" --newmode "$name" "$@" 2>&1)"; then
+        modeline_status="newmode-failed:${error:-unknown}"
+        return 1
+    fi
+    if ! error="$("$XRANDR" --addmode "$output" "$name" 2>&1)"; then
+        modeline_status="addmode-failed:${error:-unknown}"
+        return 1
+    fi
+    modeline_status=added
+    modeline_result="$name"
+    return 0
 }
 
 apply_mode() {
@@ -240,6 +262,7 @@ do_fit() {
     fi
 
     modes="$(output_modes "$output")"
+    modeline_status=none
     mode="$(choose_exact_mode "$modes" "$target" || true)"
     source=fit
 
@@ -247,8 +270,10 @@ do_fit() {
     # target before accepting one. This is what turns VMSVGA's 1280x800
     # default into 1280x720 when the adapter omits 720p from its mode list.
     if [ -z "$mode" ]; then
-        mode="$(try_target_modeline "$target" || true)"
-        source=modeline
+        if try_target_modeline "$target"; then
+            mode="$modeline_result"
+            source=modeline
+        fi
     fi
 
     if [ -z "$mode" ]; then

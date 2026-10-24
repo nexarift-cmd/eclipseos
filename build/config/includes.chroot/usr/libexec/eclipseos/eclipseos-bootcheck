@@ -43,10 +43,12 @@ display_details() {
     display_output="$(read_key "$display_file" output)"
     display_target="$(read_key "$display_file" target)"
     display_source="$(read_key "$display_file" source)"
-    printf ' display=%s display_initial=%s display_mode=%s display_output=%s display_target=%s display_source=%s' \
+    display_modeline="$(read_key "$display_file" modeline)"
+    printf ' display=%s display_initial=%s display_mode=%s display_output=%s display_target=%s display_source=%s display_modeline=%s' \
         "${display:-unknown}" "${display_initial:-unknown}" \
         "${display_mode:-unknown}" "${display_output:-unknown}" \
-        "${display_target:-unknown}" "${display_source:-unknown}"
+        "${display_target:-unknown}" "${display_source:-unknown}" \
+        "${display_modeline:-unknown}"
 }
 
 guard_details() {
