@@ -190,6 +190,35 @@ choose_fitting_mode() {
     '
 }
 
+# Return true only when the current screen is larger than the requested target.
+# A mode that already fits, including a deliberately smaller user mode, is left
+# alone. This is used after every resolution change, not only during Plasma's
+# startup window: VirtualBox returns to its 1280x800 default when a VM is
+# switched from fullscreen back to a normal window.
+needs_fit() {
+    current="$1"
+    requested="$2"
+    if [ -z "$current" ] || [ -z "$requested" ]; then
+        return 1
+    fi
+    case "$current" in
+        *x*) ;;
+        *) return 1 ;;
+    esac
+    current_width="${current%x*}"
+    current_height="${current#*x}"
+    target_width="${requested%x*}"
+    target_height="${requested#*x}"
+    case "${current_width}${current_height}${target_width}${target_height}" in
+        *[!0-9]*) return 1 ;;
+    esac
+    if [ "$current_width" -le "$target_width" ] &&
+        [ "$current_height" -le "$target_height" ]; then
+        return 1
+    fi
+    return 0
+}
+
 # A virtual adapter may expose only its host default. Try to add the standard
 # CVT mode before falling back to the adapter's smaller modes. This is a
 # best-effort operation; a rejected modeline leaves the current mode intact.
@@ -386,10 +415,40 @@ do_guard() {
     screen="$(screen_geometry || true)"
     write_guard_status
 
+    target="$(kernel_value eclipseos.display || true)"
+    desired="$target"
+    case "$desired" in
+        "") desired="$TARGET_DEFAULT" ;;
+        keep) desired="" ;;
+        *)
+            if ! printf '%s\n' "$desired" | grep -Eq "$SIZE_PATTERN"; then
+                desired="$TARGET_DEFAULT"
+            fi
+            ;;
+    esac
+
+    # KScreen applies its own display profile after Plasma starts and can
+    # overwrite the mode selected by the session wrapper. Give it a moment,
+    # then reassert the fit before waiting for the panel D-Bus service.
+    if [ -n "$desired" ]; then
+        sleep 3
+        do_fit
+        sleep 2
+    fi
+
     # Plasma starts its panel after this XDG autostart entry. Retry until the
-    # shell D-Bus service is available and at least one panel exists.
+    # shell D-Bus service is available and at least one panel exists. Keep
+    # checking the display too: KScreen can restore a taller mode while the
+    # panel is still starting.
     attempt=0
     while [ "$attempt" -lt 30 ]; do
+        if [ -n "$desired" ]; then
+            current="$(screen_geometry || true)"
+            if needs_fit "$current" "$desired"; then
+                log "resolution $current exceeds target $desired; re-fitting"
+                do_fit
+            fi
+        fi
         if reanchor_panel; then
             break
         fi
@@ -402,28 +461,6 @@ do_guard() {
         log "Plasma panel D-Bus did not become ready"
     fi
 
-    target="$(kernel_value eclipseos.display || true)"
-    desired="$target"
-    case "$desired" in
-        "") desired="$TARGET_DEFAULT" ;;
-        keep) desired="" ;;
-    esac
-
-    # KScreen applies its own initial display profile after Plasma starts and
-    # can overwrite the mode selected by the session wrapper. Wait for that
-    # pass, reassert the fit, then check once more before declaring the guard
-    # ready. Without this, a VMSVGA host default can return after Plasma has
-    # already created its panel.
-    if [ -n "$desired" ]; then
-        sleep 5
-        do_fit
-        sleep 3
-        current="$(screen_geometry || true)"
-        if [ -n "$current" ] && [ "$current" != "$desired" ]; then
-            do_fit
-        fi
-    fi
-
     if reanchor_panel; then
         guard_state=ready
     else
@@ -433,18 +470,18 @@ do_guard() {
     write_guard_status
 
     last="$screen"
-    started="$(date +%s)"
     while :; do
         sleep 3
         current="$(screen_geometry || true)"
         [ -n "$current" ] || continue
         if [ "$current" != "$last" ]; then
             log "resolution changed from $last to $current; re-anchoring panel"
-            # KScreen occasionally restores its preferred mode during the
-            # first minute. Reassert the requested fit in that window only;
-            # later manual resolution changes are left alone.
-            if [ -n "$desired" ] &&
-                [ $(( $(date +%s) - started )) -le 60 ]; then
+            # Re-fit whenever the new mode is taller than the target, no matter
+            # how long the session has been running. VirtualBox returns to its
+            # 1280x800 default when a window leaves fullscreen, which clips the
+            # bottom panel on a 1366x768 host. Modes that already fit the target
+            # (including deliberately smaller user modes) are left untouched.
+            if [ -n "$desired" ] && needs_fit "$current" "$desired"; then
                 do_fit
             fi
             reanchor_panel || true

@@ -306,20 +306,28 @@ overrides the target and `eclipseos.display=keep` preserves a fixed EDID size
 for screenshot evidence. Physical machines and Wayland sessions are never
 changed.
 
-The display guard autostart runs after Plasma. It first reasserts the display
-fit, because Plasma/KScreen can reset the mode while starting, then puts every
-panel back on the bottom edge (`location=bottom`, centred, zero offset) and
-watches `xrandr` for runtime resolution changes, re-anchoring the panel after
-each change. It retries until a panel actually exists rather than treating the
-Plasma D-Bus service's appearance as readiness. The panel layout also sets
-`offset=0` explicitly. The guard writes `display_*` and `guard_*` fields plus a
-diagnostic file. The pre-Plasma fit adds the CVT modeline; the guard's later
-status records `display_source=modeline` and `display_modeline=existing`
-because it found the mode already present on the passing QEMU path. The
-1366x768 QEMU gate measures the produced framebuffer and the panel's
-top and bottom edges; it does not infer visibility from the guest's chosen
-resolution alone. Run 40113308256 fitted a 1366x768 initial mode to 1280x720
-and detected the panel at rows 663-711.
+The display guard autostart runs after Plasma. It waits briefly for
+Plasma/KScreen, reasserts the display fit, and puts every panel back on the
+bottom edge (`location=bottom`, centred, zero offset). It retries until a panel
+actually exists rather than treating the Plasma D-Bus service's appearance as
+readiness. The panel layout also sets `offset=0` explicitly. The guard writes
+`display_*` and `guard_*` fields plus a diagnostic file.
+
+The guard watches `xrandr` for runtime resolution changes. After every change
+it re-anchors the panel and, if the new mode is taller or wider than the
+requested target, re-runs the fit. This is not limited to Plasma's startup
+window: VirtualBox returns a guest to its 1280x800 default when the VM leaves
+fullscreen for a normal window, even long after login, which clips the bottom
+of the panel on a 1366x768 host. A mode that already fits the target, or a
+deliberately smaller user mode such as 1024x600 or 800x600, is left untouched.
+`eclipseos.display=keep` disables the fit entirely and only re-anchors the
+panel. The pre-Plasma fit adds the CVT modeline; the guard's later status
+records `display_source=modeline` and `display_modeline=existing` because it
+found the mode already present on the passing QEMU path. The 1366x768 QEMU gate
+measures the produced framebuffer and the panel's top and bottom edges; it does
+not infer visibility from the guest's chosen resolution alone. Run 40113308256
+fitted a 1366x768 initial mode to 1280x720 and detected the panel at rows
+663-711.
 
 ## 6. Installer design
 

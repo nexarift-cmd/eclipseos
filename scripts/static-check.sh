@@ -29,6 +29,10 @@ for script in "$ROOT_DIR"/build/config/includes.chroot/usr/local/bin/eclipseos-*
 done
 printf '  ok\n'
 
+printf 'Display guard fit decisions\n'
+sh "$ROOT_DIR/tests/test-display-guard.sh"
+printf '  ok\n'
+
 if command -v shellcheck >/dev/null 2>&1; then
     printf 'ShellCheck\n'
     shellcheck -s bash "$ROOT_DIR"/scripts/*.sh

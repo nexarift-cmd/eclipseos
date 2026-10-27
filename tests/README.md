@@ -200,5 +200,15 @@ passed in run 40113308256: `display_initial=1366x768`, `display=1280x720`,
 capture and result JSON are in
 [`../docs/evidence/phase2`](../docs/evidence/phase2/README.md).
 
+`tests/test-display-guard.sh` is a host-side unit check for the guard's fit
+decision. It extracts the `needs_fit` function and asserts that a taller or
+wider mode (1280x800, 1366x768, 1920x1080, 1920x600) triggers a re-fit, while
+the target and deliberately smaller modes (1280x720, 1024x600, 800x600,
+640x480) are preserved. `make static-check` runs it before every build. This
+covers the VirtualBox normal-window transition after the old 60-second
+startup-only re-fit window; QEMU cannot inject a runtime `xrandr` change into
+the guest. The real VMSVGA normal/scaled/fullscreen result remains a manual
+VirtualBox acceptance gate.
+
 QEMU tests use TCG when KVM is unavailable. They are slower but still valid;
 timing assertions must account for that.
