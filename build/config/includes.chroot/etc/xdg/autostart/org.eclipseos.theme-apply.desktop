@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=EclipseOS theme
+Comment=Apply the saved EclipseOS colour scheme and wallpaper
+Exec=/usr/local/bin/eclipseos-theme apply
+Icon=preferences-desktop-theme
+Terminal=false
+NoDisplay=true
+X-KDE-autostart-after=panel
+X-KDE-autostart-phase=2

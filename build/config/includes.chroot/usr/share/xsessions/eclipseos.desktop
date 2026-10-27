@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=EclipseOS
-Comment=EclipseOS desktop session (Phase 1 preview, X11)
-Exec=/usr/local/bin/eclipseos-session
-TryExec=/usr/local/bin/eclipseos-session
-Icon=eclipseos
-Type=Application

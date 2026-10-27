@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=EclipseOS display guard
+Comment=Keep the taskbar anchored after a virtual-machine resolution change
+Exec=/usr/local/bin/eclipseos-display guard
+Icon=preferences-desktop-display
+Terminal=false
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-after=panel
+X-KDE-autostart-phase=2

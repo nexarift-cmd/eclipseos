@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=EclipseOS Welcome
+Comment=Live image orientation
+Exec=/usr/local/bin/eclipseos-welcome
+OnlyShowIn=KDE;
+NoDisplay=true
+X-KDE-autostart-after=panel

@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# Select the SDDM autologin session before SDDM starts.
+#
+# Wayland is the default on physical machines. Virtual machines get the
+# Plasma X11 session instead: VMSVGA and other virtual display adapters are a
+# common source of black Wayland screens, and SDDM cannot turn a failed
+# Wayland session into an X11 one after the fact because the X server is
+# started by SDDM before the session command runs.
+#
+# The selection is written as a late SDDM drop-in. The static
+# 50-eclipseos.conf keeps Session=eclipseos-x11 as a safe fallback if this
+# service ever fails.
+set -eu
+
+install -d -m 0755 /etc/sddm.conf.d
+
+virt="$(systemd-detect-virt 2>/dev/null || true)"
+session=eclipseos-wayland
+reason=physical
+
+if systemd-detect-virt --vm --quiet; then
+    session=eclipseos-x11
+    reason="virtual-machine:${virt:-unknown}"
+fi
+
+# The SDDM greeter evidence boot disables autologin with
+# eclipseos.autologin=off. An empty late User= value overrides the static
+# live-user default, so SDDM shows the branded greeter instead of logging in.
+autologin_user=eclipse
+if grep -qw 'eclipseos.autologin=off' /proc/cmdline 2>/dev/null; then
+    autologin_user=""
+    reason="$reason;greeter-test"
+fi
+
+cat > /etc/sddm.conf.d/zz-eclipseos-session.conf <<EOF
+[Autologin]
+User=$autologin_user
+Session=$session
+EOF
+chmod 0644 /etc/sddm.conf.d/zz-eclipseos-session.conf
+
+# The greeter has its own session selector. Seed SDDM's state with the
+# absolute .desktop path used by Session::fileName(); the greeter's lastIndex
+# compares that value directly. A bare filename is not enough. Leave
+# RememberLastSession at its default so SDDM can keep this state in sync.
+state_dir=/var/lib/sddm
+case "$session" in
+    eclipseos-x11) session_file=/usr/share/xsessions/$session.desktop ;;
+    *) session_file=/usr/share/wayland-sessions/$session.desktop ;;
+esac
+if [ -d "$state_dir" ]; then
+    cat > "$state_dir/state.conf" <<EOF
+[Last]
+Session=$session_file
+User=eclipse
+EOF
+    chmod 0644 "$state_dir/state.conf"
+    chown sddm:sddm "$state_dir/state.conf" 2>/dev/null || true
+fi
+
+printf '%s\n' "$session" > /run/eclipseos-session
+printf 'EclipseOS autologin session: %s (%s)\n' "$session" "$reason" \
+    | logger -t eclipseos-session 2>/dev/null || true

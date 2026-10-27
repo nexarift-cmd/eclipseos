@@ -1,0 +1,13 @@
+EclipseOS SDDM greeter theme
+
+This directory is a thin branding derivative of the Breeze SDDM theme shipped
+by Debian's sddm-theme-breeze package (plasma-desktop 6.3.6). The QML files
+are reused unchanged and retain their upstream SPDX headers; the EclipseOS
+changes are limited to metadata.desktop, theme.conf and the wallpaper/logo
+paths. The EclipseOS mark and wallpaper are original project artwork generated
+from branding/tokens.json.
+
+Upstream: https://invent.kde.org/plasma/plasma-desktop
+Package:  sddm-theme-breeze 4:6.3.6-1
+Licence:  CC-BY-SA-4.0 for the theme metadata; the QML source files retain
+          their LGPL-2.0-or-later headers.

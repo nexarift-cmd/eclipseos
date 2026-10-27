@@ -2,8 +2,11 @@ EclipseOS 26.10 - live image
 ============================
 
 This is a bootable EclipseOS live image built from Debian GNU/Linux 13
-("trixie") with the Debian live-build tooling. It is a Phase 1 preview: the
-desktop session is X11 with openbox, not the final Plasma desktop.
+("trixie") with the Debian live-build tooling. It is a Phase 2 preview: the
+desktop session is Plasma 6 with SDDM. Physical machines use Wayland by
+default; virtual machines are switched to Plasma X11 automatically by
+systemd-detect-virt. Phase 2 visual polish, VirtualBox acceptance and
+1920x1080 light/dark evidence are still in progress.
 
 Boot it as a CD/DVD or write it to a USB device. Both UEFI and legacy BIOS
 firmware are supported. The image is hybrid: the same file boots from optical
@@ -31,9 +34,11 @@ Licensing
   this image.
 
 Virtual machines
-  VirtualBox: use EFI, 4 GiB RAM, 2 CPUs, 128 MiB video, VMSVGA graphics.
+  VirtualBox: use EFI, at least 2 GiB RAM (4 GiB recommended), 2 CPUs,
+  128 MiB video, VMSVGA graphics. EclipseOS selects Plasma X11 in VirtualBox.
   QEMU: `make test-all` in the source repository boots this image headlessly
-  with UEFI (OVMF) and legacy BIOS firmware.
+  with UEFI (OVMF) and legacy BIOS firmware. QEMU also selects Plasma X11.
+  QEMU cannot validate VirtualBox VMSVGA or real-hardware Wayland.
 
 "Windows 11" is a trademark of Microsoft Corporation. EclipseOS is not
 affiliated with Microsoft and contains no Microsoft assets.

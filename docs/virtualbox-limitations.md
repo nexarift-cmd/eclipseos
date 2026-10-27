@@ -1,6 +1,6 @@
 # VirtualBox support and known limitations
 
-Status: **Phase 1.** This document records what EclipseOS does and does not
+Status: **Phase 2 candidate.** This document records what EclipseOS does and does not
 provide in VirtualBox. It is deliberately explicit: the "pre-installed
 VirtualBox guest utilities" part of the original requirement is **not met**,
 and the ISO does not pretend otherwise.
@@ -9,10 +9,10 @@ and the ISO does not pretend otherwise.
 
 | Capability | Status in the EclipseOS ISO | Notes |
 | --- | --- | --- |
-| Boot in VirtualBox UEFI and BIOS | **Verified at 2048 MiB** | EFI and BIOS both reached the live desktop on 2026-10-20. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
+| Boot in VirtualBox UEFI and BIOS | **BIOS verified at 2048 MiB; UEFI still open** | Phase 1 EFI and BIOS reached the live desktop on 2026-10-20. The final Phase 2 candidate (run 40135407986) reached the BIOS desktop at 2048 MiB; the user's own BIOS run also reached the desktop. 2048 MiB is the acceptance size on this host; 4096 MiB is recommended but could not be started on the 5.1 GB test host. |
 | Graphics controller | VMSVGA | Selected by `scripts/create-vbox-vm.sh`; 128 MiB video RAM. |
-| Basic desktop rendering | Verified at 2048 MiB via X11/openbox | No Oracle Guest Additions required. Performance and maximum resolution depend on the host and VirtualBox version. |
-| Automatic guest resolution / window resize | **Not available** | Requires Guest Additions. Set a mode manually with `xrandr` if the virtual monitor exposes one. |
+| Basic desktop rendering | **BIOS verified at 2048 MiB on the final candidate; UEFI open** | No Oracle Guest Additions required. Kernel `vmwgfx` logs an unsupported-hypervisor warning under VirtualBox 7.2.20, but Xorg loads its `vmware` driver and the Plasma X11 desktop renders. The final candidate reached the desktop; the post-Plasma display fix is being rebuilt and re-tested. |
+| Automatic guest resolution / window resize | **Partial, VM-safe default only** | Host-window resize still requires Guest Additions. The EclipseOS X11 session tries the exact 1280x720 mode first, adds a CVT 1280x720 modeline if it is absent, and only then accepts a smaller advertised mode inside that target. The post-Plasma guard reasserts the fit at startup and again after any later resolution change that exceeds the target, then re-anchors the bottom panel. VMSVGA's 1280x800 default is taller than a 1366x768 host window and returns when leaving fullscreen; the guard now corrects that at any time. Already-fitting and deliberately smaller modes are left alone. The user can still change mode with `xrandr`; Guest Additions are not bundled. |
 | Seamless mouse integration | **Not available** | The guest uses a relative pointer. Use VirtualBox's host key to release the pointer. |
 | Shared clipboard | **Not available** | No Guest Additions. Clipboard settings in the VM do nothing useful. |
 | Shared folders | **Not available** | No Guest Additions. |
@@ -78,7 +78,9 @@ This is a licensing and support decision, not an oversight.
 The open-source Linux stack already contains what a VirtualBox guest needs for
 a basic desktop:
 
-- the kernel `vmwgfx` driver drives the VMSVGA adapter;
+- the kernel `vmwgfx` driver binds the VMSVGA adapter and Xorg's `vmware`
+  driver renders the desktop; VirtualBox 7.2.20 logs an unsupported-hypervisor
+  warning from `vmwgfx`, but the X11 desktop remains usable;
 - Mesa provides OpenGL/software rendering;
 - the X11 session (Phase 1: LightDM + openbox; Phase 2: Plasma X11 fallback)
   does not depend on Guest Additions;
@@ -93,8 +95,16 @@ seamless VirtualBox integration a user gets with Guest Additions.
 
 These are host-side or user-side options, not features of the ISO:
 
-- **Resolution:** after login, run `xrandr` to list modes and select one the
-  virtual monitor exposes. Do not expect arbitrary host-window resizing.
+- **Resolution:** the X11 session starts at exactly 1280x720 when the adapter
+  advertises it, or adds a CVT 1280x720 modeline when it does not. If that
+  fails, it uses the largest advertised mode inside the 1280x720 target. The
+  post-Plasma guard repeats the fit after a later taller resolution change,
+  such as VirtualBox returning to 1280x800 when the VM leaves fullscreen; it
+  leaves an already-fitting or deliberately smaller mode alone. Run `xrandr`
+  to list modes or select another mode. Do not expect arbitrary host-window
+  resizing; that requires Guest Additions. `eclipseos.display=keep` on the
+  kernel command line keeps the adapter default, and `eclipseos.display=WxH`
+  requests another target.
 - **Pointer:** use the VirtualBox host key (usually Right Ctrl) to release the
   pointer from the guest.
 - **File transfer:** attach a second virtual disk, use a network service you
@@ -127,10 +137,27 @@ yourself, enable those features in VirtualBox afterwards.
 
 ## Acceptance status
 
-VirtualBox 7.2.20 booted the ISO in EFI and BIOS modes on 2026-10-20. Both
-sessions reached the live X11 desktop, with the GRUB menu and desktop captured
-in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2 vCPUs,
-128 MiB VMSVGA video and a 25 GiB disk.
+VirtualBox 7.2.20 booted the Phase 1 ISO in EFI and BIOS modes on 2026-10-20.
+Both sessions reached the live X11 desktop, with the GRUB menu and desktop
+captured in [`evidence/phase1`](evidence/phase1/README.md). The VM used 2
+vCPUs, 128 MiB VMSVGA video and a 25 GiB disk.
+
+Phase 2 QEMU run 40113308256 booted the final candidate seven times, including
+three fitted default boots and a 1366x768 EDID/panel gate at 1280x720. That is
+QEMU std-VGA evidence, not VirtualBox VMSVGA evidence.
+
+The final candidate ISO (run 40135407986, `eaefd88`) was booted in real
+VirtualBox 7.2.20 at 2048 MiB, BIOS, VMSVGA, on a 1366x768 host. The guest
+started at 1280x800 and the X11 session fitted it to 1280x720. A serial-console
+diagnostic on that boot showed Xorg using its `vmware` driver,
+`display_source=fit`, and a live `xrandr` mode list containing 1280x720. A later manual
+1280x800 change reproduced the normal-window clipping; the branch fix re-fitted
+it to 1280x720 after the original 60-second startup window, while an 800x600
+user mode was left at 800x600. This was a live-root test of the fix, not yet a
+test of a rebuilt ISO. VirtualBox UEFI, a rebuilt-ISO normal/scaled-window pass,
+and the 4096 MiB configuration remain open. See
+[`evidence/phase2`](evidence/phase2/README.md) for the artifact and the
+remaining gates.
 
 **2048 MiB is the accepted VirtualBox acceptance size on this host.** The
 script's 4096 MiB setting is the recommended configuration, but it could not be

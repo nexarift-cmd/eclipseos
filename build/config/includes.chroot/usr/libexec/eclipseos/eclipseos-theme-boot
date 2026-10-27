@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# Select the EclipseOS live colour scheme before SDDM starts.
+#
+# A normal boot uses the saved live-user choice, or EclipseOS dark when no
+# choice exists. The kernel command line can override it for one boot with
+# eclipseos.theme=light or eclipseos.theme=dark; that override is deliberately
+# not persisted, so the next boot returns to the user's saved choice.
+#
+# The user can switch at runtime with eclipseos-theme (also in the Start
+# menu). This service runs before Plasma, so it updates kdeglobals directly
+# rather than using plasma-apply-colorscheme, which needs a session bus.
+set -eu
+
+theme=""
+# The kernel command line is whitespace-separated; word splitting is intended.
+# shellcheck disable=SC2013
+for argument in $(cat /proc/cmdline); do
+    case "$argument" in
+        eclipseos.theme=light) theme=light ;;
+        eclipseos.theme=dark) theme=dark ;;
+    esac
+done
+
+state=/home/eclipse/.config/eclipseos/theme
+if [ -z "$theme" ] && [ -r "$state" ]; then
+    saved="$(cat "$state" 2>/dev/null || true)"
+    case "$saved" in
+        light|dark) theme="$saved" ;;
+    esac
+fi
+theme="${theme:-dark}"
+
+printf '%s\n' "$theme" > /run/eclipseos-theme
+
+config=/home/eclipse/.config/kdeglobals
+
+if [ "$theme" = "light" ]; then
+    scheme=EclipseOSLight
+    lookandfeel=org.eclipseos.light.desktop
+else
+    scheme=EclipseOS
+    lookandfeel=org.eclipseos.desktop
+fi
+plasma_theme=default
+
+if [ ! -f "$config" ]; then
+    mkdir -p "$(dirname "$config")"
+    printf '[KDE]\nLookAndFeelPackage=%s\n\n[General]\nColorScheme=%s\n' \
+        "$lookandfeel" "$scheme" > "$config"
+fi
+
+if grep -q '^ColorScheme=' "$config"; then
+    sed -i "s/^ColorScheme=.*/ColorScheme=$scheme/" "$config"
+elif grep -q '^\[General\]' "$config"; then
+    sed -i "/^\[General\]/a ColorScheme=$scheme" "$config"
+else
+    printf '\n[General]\nColorScheme=%s\n' "$scheme" >> "$config"
+fi
+grep -qx "ColorScheme=$scheme" "$config" \
+    || { printf 'eclipseos-theme: could not select the %s colour scheme\n' "$theme" >&2; exit 1; }
+
+if grep -q '^LookAndFeelPackage=' "$config"; then
+    sed -i "s/^LookAndFeelPackage=.*/LookAndFeelPackage=$lookandfeel/" "$config"
+elif grep -q '^\[KDE\]' "$config"; then
+    sed -i "/^\[KDE\]/a LookAndFeelPackage=$lookandfeel" "$config"
+else
+    printf '\n[KDE]\nLookAndFeelPackage=%s\n' "$lookandfeel" >> "$config"
+fi
+grep -qx "LookAndFeelPackage=$lookandfeel" "$config" \
+    || { printf 'eclipseos-theme: could not select the %s look and feel\n' "$theme" >&2; exit 1; }
+chown eclipse:eclipse "$config"
+
+# The colour scheme drives the Plasma shell too, but the selected global theme
+# also supplies the branded wallpaper and shell defaults. Select the matching
+# EclipseOS light/dark look and feel before Plasma starts; eclipseos-theme
+# applies the same package again inside the live session. Both EclipseOS
+# themes use Plasma's colour-aware default widget style, so plasmarc stays on
+# "default" and the colour scheme selects the light/dark rendering.
+plasmarc=/home/eclipse/.config/plasmarc
+if [ -f "$plasmarc" ]; then
+    if grep -q '^name=' "$plasmarc"; then
+        sed -i "s/^name=.*/name=$plasma_theme/" "$plasmarc"
+    elif grep -q '^\[Theme\]' "$plasmarc"; then
+        sed -i "/^\[Theme\]/a name=$plasma_theme" "$plasmarc"
+    else
+        printf '\n[Theme]\nname=%s\n' "$plasma_theme" >> "$plasmarc"
+    fi
+else
+    printf '[Theme]\nname=%s\n' "$plasma_theme" > "$plasmarc"
+fi
+grep -qx "name=$plasma_theme" "$plasmarc" \
+    || { printf 'eclipseos-theme: could not select the %s Plasma theme\n' "$theme" >&2; exit 1; }
+chown eclipse:eclipse "$plasmarc"

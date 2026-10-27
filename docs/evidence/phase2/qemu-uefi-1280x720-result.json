@@ -1,0 +1,46 @@
+{
+  "timestamp_utc": "2026-10-24T16:57:33+00:00",
+  "firmware": "uefi",
+  "machine": "q35",
+  "vga": "std",
+  "video_edid": null,
+  "expect_display": null,
+  "check_panel": false,
+  "optical": "auto",
+  "boot_mode": "iso",
+  "close_welcome": false,
+  "kernel": null,
+  "initrd": null,
+  "kernel_append": null,
+  "iso": "/work/eclipseos-26.10-amd64.iso",
+  "iso_sha256": "97fd89e2e82d4ecd006ba584aea8a719d3b8ff0a3471d90dd0c0db611d31af20",
+  "duration_seconds": 49.3,
+  "marker": "eclipseos login: ECLIPSEOS_BOOT_OK stage=desktop session=x11 theme=dark theme_status=not-checked applied_theme=not-checked scheme=unknown plasma_theme=default lookandfeel=org.eclipseos.desktop display=1280x720 display_initial=1280x800 display_mode=EclipseOS-1280x720 display_output=Virtual-1 display_target=1280x720 display_source=modeline display_modeline=existing guard=ready guard_panel=1 virt=kvm selection=eclipseos-x11 vm_tuning=1 failed_units=0",
+  "failure_marker": "",
+  "failed_units": 0,
+  "screenshot": "/work/tests/out/20261024T165644Z-uefi-q35-auto-std/screenshot.png",
+  "screenshot_info": {
+    "width": 1280,
+    "height": 720,
+    "sampled_pixels": 102400,
+    "non_black_ratio": 0.484063,
+    "unique_colours": 1997,
+    "meaningful": true,
+    "panel": {
+      "visible": true,
+      "top": 663,
+      "bottom": 711,
+      "height": 49,
+      "gap": 8,
+      "span": 621,
+      "center_offset": 0.5
+    }
+  },
+  "early_screenshots": [
+    "/work/tests/out/20261024T165644Z-uefi-q35-auto-std/boot-01-0008s.png",
+    "/work/tests/out/20261024T165644Z-uefi-q35-auto-std/boot-02-0038s.png"
+  ],
+  "startmenu_screenshots": [],
+  "result": "pass",
+  "failure_reason": ""
+}

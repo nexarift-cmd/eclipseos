@@ -3,10 +3,10 @@
 # EclipseOS live boot verification.
 #
 # Runs once per live boot after the display manager has started. It waits for
-# the graphical session, counts failed systemd units, and writes a single
-# machine-readable marker to the serial console only when the session is
-# genuinely up. The headless QEMU tests (tests/qemu_boot_test.py) depend on
-# this exact contract.
+# the Plasma desktop and its compositor, counts failed systemd units, and
+# writes a single machine-readable marker to the serial console only when the
+# session is genuinely up. The headless QEMU tests
+# (tests/qemu_boot_test.py) depend on this exact contract.
 #
 # On systems without a serial port (for example VirtualBox with no serial
 # adapter) the marker is only logged to the journal; nothing fails.
@@ -15,13 +15,81 @@ set -u
 MARKER_PREFIX="ECLIPSEOS_BOOT_OK"
 FAIL_PREFIX="ECLIPSEOS_BOOT_FAIL"
 SERIAL_DEVICE="/dev/ttyS0"
-SESSION_TIMEOUT=120
+SESSION_TIMEOUT=180
+THEME_STATUS_FILE="/home/eclipse/.cache/eclipseos-theme/last"
+THEME_DEBUG_FILE="/home/eclipse/.cache/eclipseos-theme/debug.log"
+
+read_key() {
+    file="$1"
+    key="$2"
+    [ -r "$file" ] || return 0
+    sed -n "s/^${key}=//p" "$file" | head -n 1
+}
+
+theme_details() {
+    scheme="$(read_key /home/eclipse/.config/kdeglobals ColorScheme)"
+    plasma_theme="$(read_key /home/eclipse/.config/plasmarc name)"
+    lookandfeel="$(read_key /home/eclipse/.config/kdeglobals LookAndFeelPackage)"
+    printf ' scheme=%s plasma_theme=%s lookandfeel=%s' \
+        "${scheme:-unknown}" "${plasma_theme:-unknown}" "${lookandfeel:-unknown}"
+}
+
+display_details() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    display_file="/run/user/${live_uid}/eclipseos-display"
+    display="$(read_key "$display_file" screen)"
+    display_initial="$(read_key "$display_file" initial)"
+    display_mode="$(read_key "$display_file" mode)"
+    display_output="$(read_key "$display_file" output)"
+    display_target="$(read_key "$display_file" target)"
+    display_source="$(read_key "$display_file" source)"
+    display_modeline="$(read_key "$display_file" modeline)"
+    printf ' display=%s display_initial=%s display_mode=%s display_output=%s display_target=%s display_source=%s display_modeline=%s' \
+        "${display:-unknown}" "${display_initial:-unknown}" \
+        "${display_mode:-unknown}" "${display_output:-unknown}" \
+        "${display_target:-unknown}" "${display_source:-unknown}" \
+        "${display_modeline:-unknown}"
+}
+
+guard_details() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    guard_file="/run/user/${live_uid}/eclipseos-display-guard"
+    guard_state="$(read_key "$guard_file" state)"
+    guard_panel="$(read_key "$guard_file" panel)"
+    printf ' guard=%s guard_panel=%s' \
+        "${guard_state:-unknown}" "${guard_panel:-unknown}"
+}
 
 emit() {
     printf '%s\n' "$1"
     if [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ]; then
         printf '%s\n' "$1" > "$SERIAL_DEVICE"
     fi
+}
+
+dump_theme_debug() {
+    [ -r "$THEME_DEBUG_FILE" ] || return 0
+    [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ] || return 0
+    printf 'ECLIPSEOS_THEME_DEBUG_BEGIN\n' > "$SERIAL_DEVICE"
+    tail -n 30 "$THEME_DEBUG_FILE" > "$SERIAL_DEVICE" 2>/dev/null || true
+    printf 'ECLIPSEOS_THEME_DEBUG_END\n' > "$SERIAL_DEVICE"
+}
+
+dump_display_debug() {
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    display_file="/run/user/${live_uid}/eclipseos-display"
+    debug_file="/run/user/${live_uid}/eclipseos-display-debug"
+    [ -r "$debug_file" ] || return 0
+    debug_screen="$(read_key "$display_file" screen)"
+    debug_target="$(read_key "$display_file" target)"
+    debug_source="$(read_key "$display_file" source)"
+    [ "$debug_source" = "keep" ] && return 0
+    [ -n "$debug_screen" ] && [ -n "$debug_target" ] || return 0
+    [ "$debug_screen" != "$debug_target" ] || return 0
+    [ -c "$SERIAL_DEVICE" ] && [ -w "$SERIAL_DEVICE" ] || return 0
+    printf 'ECLIPSEOS_DISPLAY_DEBUG_BEGIN\n' > "$SERIAL_DEVICE"
+    head -n 160 "$debug_file" > "$SERIAL_DEVICE" 2>/dev/null || true
+    printf 'ECLIPSEOS_DISPLAY_DEBUG_END\n' > "$SERIAL_DEVICE"
 }
 
 # Never report success for a non-live system. The installed OS must not carry
@@ -32,24 +100,132 @@ if ! grep -qw 'boot=live' /proc/cmdline 2>/dev/null; then
 fi
 
 deadline=$(( $(date +%s) + SESSION_TIMEOUT ))
+
+# The SDDM branding evidence boot skips autologin. In that mode the greeter,
+# not plasmashell, is the successful end state.
+if grep -qw 'eclipseos.autologin=off' /proc/cmdline 2>/dev/null; then
+    greeter=""
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+        if pgrep -f 'sddm-greeter' >/dev/null 2>&1; then
+            greeter=1
+            break
+        fi
+        sleep 1
+    done
+    if [ -z "$greeter" ]; then
+        emit "$FAIL_PREFIX stage=greeter reason=sddm-greeter-not-running"
+        exit 1
+    fi
+    sleep 4
+    failed_units="$(systemctl --failed --no-legend --plain 2>/dev/null | grep -c . || true)"
+    failed_units="${failed_units:-0}"
+    theme="dark"
+    if [ -r /run/eclipseos-theme ]; then
+        theme="$(cat /run/eclipseos-theme 2>/dev/null || printf dark)"
+    fi
+    virt="$(systemd-detect-virt 2>/dev/null || true)"
+    virt="${virt:-none}"
+    selection="unknown"
+    if [ -r /run/eclipseos-session ]; then
+        selection="$(cat /run/eclipseos-session 2>/dev/null || printf unknown)"
+    fi
+    vm_tuning=0
+    [ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
+    emit "$MARKER_PREFIX stage=greeter session=greeter theme=${theme}$(theme_details)$(display_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+    if [ "$failed_units" -eq 0 ]; then
+        exit 0
+    fi
+    exit 1
+fi
+
 session=""
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    if pgrep -x openbox >/dev/null 2>&1; then
-        session="x11"
-        break
+    if pgrep -x plasmashell >/dev/null 2>&1; then
+        if pgrep -x kwin_wayland >/dev/null 2>&1; then
+            session="wayland"
+            break
+        fi
+        if pgrep -x kwin_x11 >/dev/null 2>&1; then
+            session="x11"
+            break
+        fi
     fi
     sleep 2
 done
 
 if [ -z "$session" ]; then
-    emit "$FAIL_PREFIX stage=desktop reason=openbox-not-running"
+    emit "$FAIL_PREFIX stage=desktop reason=plasma-not-running"
     exit 1
 fi
 
 failed_units="$(systemctl --failed --no-legend --plain 2>/dev/null | grep -c . || true)"
 failed_units="${failed_units:-0}"
+theme="dark"
+if [ -r /run/eclipseos-theme ]; then
+    theme="$(cat /run/eclipseos-theme 2>/dev/null || printf dark)"
+fi
+theme_status="not-checked"
+theme_applied_theme="not-checked"
+if [ "$theme" = "light" ]; then
+    # The light screenshot is part of the evidence set. Wait for the login
+    # autostart command to finish applying the theme instead of capturing the
+    # desktop while plasma-apply-lookandfeel is still switching it.
+    theme_deadline=$(( $(date +%s) + 45 ))
+    while [ "$(date +%s)" -lt "$theme_deadline" ] && [ ! -r "$THEME_STATUS_FILE" ]; do
+        sleep 1
+    done
+    theme_applied=""
+    if [ -r "$THEME_STATUS_FILE" ]; then
+        theme_applied="$(sed -n 's/^applied=//p' "$THEME_STATUS_FILE" | head -n 1)"
+        theme_applied_theme="$(sed -n 's/^theme=//p' "$THEME_STATUS_FILE" | head -n 1)"
+    fi
+    applied_scheme="$(read_key /home/eclipse/.config/kdeglobals ColorScheme)"
+    applied_lookandfeel="$(read_key /home/eclipse/.config/kdeglobals LookAndFeelPackage)"
+    if [ "$theme_applied" != "1" ] || [ "$theme_applied_theme" != "light" ] ||
+        [ "$applied_lookandfeel" != "org.eclipseos.light.desktop" ]; then
+        theme_status="failed"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-not-applied theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-unknown} applied_lookandfeel=${applied_lookandfeel:-missing}"
+        dump_theme_debug
+        exit 1
+    fi
+    if [ -n "$applied_scheme" ] && [ "$applied_scheme" != "EclipseOSLight" ]; then
+        theme_status="failed"
+        emit "$FAIL_PREFIX stage=desktop reason=theme-scheme-mismatch theme=${theme}$(theme_details) virt=$(systemd-detect-virt 2>/dev/null || printf none) vm_tuning=1 theme_status=${theme_status} applied_theme=${theme_applied_theme:-missing} applied_scheme=${applied_scheme:-unknown} applied_lookandfeel=${applied_lookandfeel:-missing}"
+        dump_theme_debug
+        exit 1
+    fi
+    theme_status="applied"
+    dump_theme_debug
+    sleep 3
+fi
+virt="$(systemd-detect-virt 2>/dev/null || true)"
+virt="${virt:-none}"
+selection="unknown"
+if [ -r /run/eclipseos-session ]; then
+    selection="$(cat /run/eclipseos-session 2>/dev/null || printf unknown)"
+fi
+vm_tuning=0
+[ -r /run/eclipseos-vm-tuning ] && vm_tuning=1
 
-emit "$MARKER_PREFIX stage=desktop session=${session} failed_units=${failed_units}"
+# The X11 display guard reasserts the VM mode after KScreen's initial profile
+# pass and then marks itself ready. Wait briefly for that state so the serial
+# marker records the mode the QEMU screenshot will actually show. Physical
+# sessions do not run the guard and are not delayed.
+if [ "$virt" != "none" ]; then
+    live_uid="$(id -u eclipse 2>/dev/null || true)"
+    guard_file="/run/user/${live_uid}/eclipseos-display-guard"
+    guard_deadline=$(( $(date +%s) + 20 ))
+    while [ "$(date +%s)" -lt "$guard_deadline" ]; do
+        guard_state="$(read_key "$guard_file" state)"
+        case "$guard_state" in
+            ready|failed) break ;;
+        esac
+        sleep 1
+    done
+fi
+
+emit "$MARKER_PREFIX stage=desktop session=${session} theme=${theme} theme_status=${theme_status} applied_theme=${theme_applied_theme}$(theme_details)$(display_details)$(guard_details) virt=${virt} selection=${selection} vm_tuning=${vm_tuning} failed_units=${failed_units}"
+dump_display_debug
 
 # The unit is marked failed (and the QEMU test rejects it) when any other
 # unit failed, even though the session itself came up.

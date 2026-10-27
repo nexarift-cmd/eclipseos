@@ -1,0 +1,13 @@
+[SddmGreeterTheme]
+Name=EclipseOS
+Description=EclipseOS Plasma login
+Author=EclipseOS project
+Copyright=(c) 2026 EclipseOS project; derived from the KDE Breeze greeter theme
+License=CC-BY-SA-4.0
+Type=sddm-theme
+Version=1.0
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=eclipseos
+Theme-API=2.0
+QtVersion=6

@@ -91,11 +91,19 @@ jobs:
               make iso
               build_status=$?
               test_status=1
+              visual_status=1
               if [ "$build_status" -eq 0 ]; then
                 echo "::endgroup::"
                 echo "::group::QEMU boot tests"
                 make -k test-all
                 test_status=$?
+                echo "::endgroup::"
+                echo "::group::Phase 2 visual evidence"
+                # These are evidence-collection targets while the theme,
+                # greeter and 1920x1080 paths are being validated. They are
+                # uploaded even when they fail and are not yet release gates.
+                make -k test-theme-light test-1920-dark test-sddm
+                visual_status=$?
               fi
               set -e
 
@@ -104,7 +112,7 @@ jobs:
               chmod a+r eclipseos-*.iso eclipseos-*.iso.sha256 \
                 eclipseos-*.iso.buildinfo build/*.log 2>/dev/null || true
 
-              echo "build_status=${build_status} test_status=${test_status}"
+              echo "build_status=${build_status} test_status=${test_status} visual_status=${visual_status}"
               if [ "$build_status" -ne 0 ] || [ "$test_status" -ne 0 ]; then
                 exit 1
               fi

@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=EclipseOS (X11)
+Comment=EclipseOS Plasma desktop on X11
+Exec=/usr/local/bin/eclipseos-plasma-x11
+TryExec=/usr/local/bin/eclipseos-plasma-x11
+Type=Application
